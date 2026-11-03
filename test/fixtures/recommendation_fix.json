@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "id": "rec_1",
+    "title": "Fix applied",
+    "description": "The suggested change was applied to your CV.",
+    "priority": "high",
+    "suggested_text": "Applied."
+  }
+}

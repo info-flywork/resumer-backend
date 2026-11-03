@@ -1,0 +1,60 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "overall_score": 70,
+    "section_scores": [
+      {"key": "experience", "score": 92},
+      {"key": "education", "score": 60},
+      {"key": "skills", "score": 50},
+      {"key": "ats", "score": 54}
+    ],
+    "recommendations": [
+      {
+        "id": "rec_1",
+        "title": "Add technical skills to your Skills section",
+        "description": "You can improve your ATS compatibility by adding current technology keywords such as React, Node.js and Docker that are missing from your CV.",
+        "priority": "high",
+        "suggested_text": "UI/UX designer focused on interface design and prototyping for mobile applications."
+      },
+      {
+        "id": "rec_2",
+        "title": "Back your achievements with numbers",
+        "description": "Adding measurable results such as \"Increased sales by 30%\" strengthens the impact of your CV.",
+        "priority": "high",
+        "suggested_text": "Increased quarterly sales by 30% by redesigning the onboarding flow for 12,000 users."
+      },
+      {
+        "id": "rec_3",
+        "title": "Enrich your Education section",
+        "description": "You can raise your education score by adding details such as GPA, thesis project or honors list.",
+        "priority": "medium",
+        "suggested_text": "B.Sc. in Computer Engineering, GPA 3.6/4.0, Dean's Honor List (2021–2023)."
+      },
+      {
+        "id": "rec_4",
+        "title": "Add a professional summary",
+        "description": "Strengthen the first impression by adding a 2-3 sentence summary at the top of your CV.",
+        "priority": "medium"
+      },
+      {
+        "id": "rec_5",
+        "title": "Standardize date formats",
+        "description": "Write all your dates in \"Month Year\" format for consistency.",
+        "priority": "low"
+      }
+    ],
+    "ats": {
+      "score": 54,
+      "found_keywords": ["Python", "JavaScript", "SQL", "Git", "Agile", "REST API"],
+      "missing_keywords": ["TypeScript", "Docker", "CI/CD", "AWS", "Kubernetes"],
+      "format_checks": [
+        {"label": "Standard font usage", "passed": true},
+        {"label": "Single-column layout", "passed": true},
+        {"label": "No tables or graphics", "passed": true},
+        {"label": "Standard section headings", "passed": false},
+        {"label": "Contact details in header", "passed": false}
+      ]
+    }
+  }
+}

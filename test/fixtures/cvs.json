@@ -1,0 +1,14 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "items": [
+      {"id": "cv_1", "title": "Main CV", "subtitle": "UI/UX Designer", "updated_text": "Updated 2 days ago", "score": 86, "is_tailored": false},
+      {"id": "cv_2", "title": "Product Designer CV", "subtitle": "Product Designer", "updated_text": "Updated 3 days ago", "score": 72, "is_tailored": true},
+      {"id": "cv_3", "title": "Freelance CV", "subtitle": "UX Researcher", "updated_text": "Updated 1 week ago", "score": 91, "is_tailored": true},
+      {"id": "cv_4", "title": "Startup CV", "subtitle": "Design Lead", "updated_text": "Updated 2 weeks ago", "score": 78, "is_tailored": true},
+      {"id": "cv_5", "title": "Academic CV", "subtitle": "Visual Designer", "updated_text": "Updated 1 month ago", "is_tailored": false},
+      {"id": "cv_6", "title": "Old CV", "subtitle": "Graphic Designer", "updated_text": "Updated 3 months ago", "is_tailored": false}
+    ]
+  }
+}

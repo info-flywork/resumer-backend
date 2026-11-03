@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "name": "Alex Smith",
+    "email": "alex.smith@example.com",
+    "title": "UI/UX Designer",
+    "phone": "+90 535 123 56 78",
+    "location": "İstanbul, Türkiye",
+    "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley",
+    "avatar_url": null,
+    "is_pro": true,
+    "credits": 12,
+    "stats": {"cvs": 6, "analyses": 3, "tailored": 12}
+  }
+}

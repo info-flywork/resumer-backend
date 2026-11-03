@@ -1,0 +1,27 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "job_title": "UI/UX Designer",
+    "company": "Nova Teknoloji",
+    "current_score": 64,
+    "new_score": 87,
+    "suggestions": [
+      {
+        "id": "summary",
+        "current": "Mobil uygulamala için kullanıcı arayüzleri ve prototipler tasarlıyorum",
+        "suggested": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever"
+      },
+      {
+        "id": "experience",
+        "current": "Mobil uygulamalar için arayüz tasarımları yaptım.",
+        "suggested": "Mobil uygulamalar için kullanıcı odaklı arayüz tasarımları geliştirdim ve prototipler oluşturarak ürün ekipleriyle çalıştım."
+      },
+      {
+        "id": "skills",
+        "current": "Figma, Prototipleme",
+        "suggested": "Nova Teknoloji - Prototipleme - Figma"
+      }
+    ]
+  }
+}

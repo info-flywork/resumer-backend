@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "current_score": 64,
+    "new_score": 87,
+    "preview": {
+      "name": "EMRAH DOĞAN",
+      "title": "UI/UX Designer",
+      "contact": "emrah@example.com - İstanbul",
+      "sections": [
+        {
+          "heading": "Profesyonel Özet",
+          "items": [
+            {"body": "Mobil uygulamalarda arayüz tasarımı ve prototipleme odaklı çalışan bi UI/UX tasarımcısıyım."}
+          ]
+        },
+        {
+          "heading": "Profesyonel Özet",
+          "items": [
+            {
+              "title": "UI/UX Tasarımcısı",
+              "meta": "Nova Teknoloji - 2021 - Günümüz",
+              "body": "Mobil uygulamalar için kullanıcı odaklı arayüz tasarımları geliştirdim ve prototipler oluşturarak ürün ekipleriyle çalıştım."
+            },
+            {
+              "title": "UI/UX Tasarımcısı",
+              "meta": "Alfa Tech - 2021 - Günümüz",
+              "body": "Mobil uygulamalar için kullanıcı odaklı arayüz tasarımları geliştirdim ve prototipler oluşturarak ürün ekipleriyle çalıştım."
+            }
+          ]
+        },
+        {
+          "heading": "Beceriler",
+          "items": [
+            {"meta": "Nova Teknoloji - Prototipleme - Figma"}
+          ]
+        }
+      ]
+    }
+  }
+}

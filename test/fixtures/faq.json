@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "message": "ok",
+  "data": {
+    "items": [
+      {"id": "faq_1", "question": "What is the Resumer?", "answer": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley"},
+      {"id": "faq_2", "question": "How it works?", "answer": "Lorem Ipsum is simply dummy text of the printing and typesetting industry."},
+      {"id": "faq_3", "question": "How do I upload my resume?", "answer": "Lorem Ipsum is simply dummy text of the printing and typesetting industry."}
+    ]
+  }
+}

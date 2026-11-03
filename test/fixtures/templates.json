@@ -1,0 +1,5 @@
+{ "status": "success", "message": "ok", "data": { "items": [
+  { "id": "modern", "name": "Modern", "category": "Modern", "description": "Clean and professional", "image": "assets/images/img_template_modern.png" },
+  { "id": "classic", "name": "Classic", "category": "Professional", "description": "Timeless and structured", "image": "assets/images/img_template_modern.png" },
+  { "id": "executive", "name": "Executive", "category": "Corporate", "description": "Formal and confident", "image": "assets/images/img_template_modern.png" }
+] } }

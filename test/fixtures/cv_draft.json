@@ -1,0 +1,11 @@
+{ "status": "success", "message": "ok", "data": {
+  "template_id": "modern", "full_name": "Emrah Doğan", "email": "emrah@example.com", "phone": "+90 535 123 56 78",
+  "location": "İstanbul, Türkiye", "photo": "assets/images/img_profile_avatar.png",
+  "summary": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.", "tone": "Professional",
+  "keywords": ["UI/UX", "Figma"],
+  "experiences": [ { "company": "Nova Technology", "position": "Senior UI/UX Designer", "location": "Istanbul, Turkey", "description": "Lorem Ipsum is simply dummy text.", "start_date": "Ekim 2023", "end_date": "Aralık 2026", "currently_working": false } ],
+  "educations": [ { "school": "İstanbul Teknik Üniversitesi", "degree": "Lisans", "field_of_study": "Endüstri Ürünleri Tasarımı", "period": "2016 - 2020", "description": "" } ],
+  "skills": ["Python", "JavaScript", "Figma"],
+  "certificates": [ { "name": "Google UX Design Certificate", "issuer": "Google 2023", "logo": "assets/images/img_logo_google.png" } ],
+  "links": [ { "url": "linkedin.com/emrahdogan", "logo": "assets/images/img_logo_linkedin.png" } ]
+} }
