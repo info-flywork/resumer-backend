@@ -1,12 +1,10 @@
 'use strict';
 
 const { AppError, forbidden } = require('../../core/errors');
+const { cvDict } = require('../../core/i18n');
 const { createCvBuilderRepository } = require('./repository');
 
 const PREMIUM = 'Resumer Pro';
-
-/** Otomatik başlık (locale sözlüğü); bilinmeyen dil en'e düşer */
-const DICT = { en: { suffix: ' CV' }, tr: { suffix: ' CV' } };
 
 /** @param {unknown} v */
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -58,7 +56,11 @@ function createService(deps) {
       if (templateId) {
         const tpl = await deps.content.getTemplate(templateId);
         if (!tpl) throw new AppError(422, 'TEMPLATE_NOT_FOUND', 'Şablon bulunamadı');
-        if (tpl.is_premium && !(await deps.entitlements.isActive(user.id, PREMIUM))) {
+        if (
+          tpl.is_premium &&
+          !deps.config.DEV_UNLIMITED &&
+          !(await deps.entitlements.isActive(user.id, PREMIUM))
+        ) {
           throw forbidden('Bu şablon Pro üyelere özel', 'PREMIUM_REQUIRED');
         }
       }
@@ -76,7 +78,7 @@ function createService(deps) {
         return { id: row.id };
       }
       await deps.cvs.assertCanAddCv(user);
-      const suffix = DICT[String(user.locale || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en'].suffix;
+      const suffix = cvDict(user.locale).cvSuffix;
       const row = await deps.cvs.create(user, {
         title: name.slice(0, 120 - suffix.length) + suffix,
         subtitle,

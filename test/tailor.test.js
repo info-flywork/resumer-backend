@@ -184,12 +184,15 @@ test('apply: seçilenler uygulanır, sözleşme, yeniden çağrılabilir (kaynak
   assert.equal(src.content.summary, 'Eski özet.');
 });
 
-test('apply: experiences boşsa experience yok sayılır (puan eklenmez)', async () => {
-  const { row, token } = await seed('ap2', { content: { full_name: 'X', summary: 's' } });
+test('apply: experiences boşsa öneriden deneyim girdisi oluşturulur (puan eklenir)', async () => {
+  const { row, token, user } = await seed('ap2', { content: { full_name: 'X', summary: 's' } });
   await analyze(token, row.id);
   const r = await t.request('POST', '/tailor/apply', { token, body: { section_ids: ['experience'] } });
   assert.equal(r.status, 200);
-  assert.equal(r.body.data.new_score, 64);
+  assert.equal(r.body.data.new_score, 72);
+  const s = await t.deps.db.one('SELECT applied_content FROM tailor_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 1', [user.id]);
+  const applied = typeof s.applied_content === 'string' ? JSON.parse(s.applied_content) : s.applied_content;
+  assert.equal(applied.experiences.length, 1);
 });
 
 test('apply: kimlik, doğrulama, oturum yok → 409', async () => {
@@ -229,8 +232,9 @@ test('save: uygulanmadan 409; sonra yeni CV, idempotent', async () => {
   assert.equal(r.status, 200);
   assertShape(r.body.data, fx('tailor_save.json'));
   const cv = await t.deps.cvs.getOwned(user, r.body.data.cv_id);
-  assert.equal(cv.title, 'UI/UX Designer CV');
-  assert.equal(cv.subtitle, 'UI/UX Designer');
+  // Başlık: "<kişi> — <ilan pozisyonu>"; alt başlık uyarlanmış ilk deneyimin pozisyonu ya da ilan
+  assert.match(cv.title, / — UI\/UX Designer$/);
+  assert.ok(cv.subtitle);
   assert.equal(Boolean(cv.is_tailored), true);
   assert.equal(cv.score, 89);
   assert.equal(cv.template_id, 'modern');

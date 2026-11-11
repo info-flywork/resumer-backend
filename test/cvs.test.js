@@ -85,8 +85,8 @@ test('detay sözleşmeye uyar ve önizleme içerikten üretilir', async () => {
   assertShape(r.body.data, fx('cv_detail.json'));
   const p = r.body.data.preview;
   assert.equal(p.name, 'Alex Morgan');
-  assert.equal(p.title, 'Designer');
-  assert.equal(p.contact, 'alex@email.com · +1 555 0100 · New York');
+  assert.equal(p.title, 'Senior Designer');
+  assert.equal(p.contact, 'alex@email.com - +1 555 0100 - New York');
   assert.deepEqual(p.sections.map((s) => s.heading), ['Experience', 'Education', 'Skills', 'Certificates', 'Links']);
   assert.equal(p.sections[0].items[0].meta, 'Acme · 2021 - Present');
   assert.equal(p.sections[1].items[0].title, 'BA, Design');
@@ -97,7 +97,23 @@ test('buildPreview: boş bölüm atlanır, başlık boşsa ilk pozisyon, tr baş
   assert.equal(p.title, 'Dev');
   assert.deepEqual(p.sections.map((s) => s.heading), ['Deneyim']);
   const full = buildPreview(content, 'en');
-  assert.deepEqual(full.sections[0], { heading: 'Summary', items: [{ body: 'Designer.' }] });
+  assert.deepEqual(full.sections[0], { kind: 'summary', heading: 'Summary', items: [{ body: 'Designer.' }] });
+});
+
+test('buildPreview: zengin şablon alanları (kind, subtitle, date, iletişim parçaları, etiket)', () => {
+  const p = buildPreview({
+    full_name: 'A', email: 'a@x.com', phone: '+90 555', location: 'Ankara',
+    experiences: [{ position: 'Dev', company: 'X', location: 'Remote', start_date: '2021', currently_working: true }],
+    skills: ['Go', 'SQL'],
+  }, 'tr');
+  assert.deepEqual(p.sections.map((s) => s.kind), ['experience', 'skills']);
+  assert.equal(p.sections[0].items[0].subtitle, 'X, Remote');
+  assert.equal(p.sections[0].items[0].date, '2021 - Devam ediyor');
+  assert.equal(p.sections[0].items[0].meta, 'X · 2021 - Devam ediyor');
+  assert.equal(p.email, 'a@x.com');
+  assert.equal(p.phone, '+90 555');
+  assert.equal(p.location, 'Ankara');
+  assert.deepEqual(p.labels, { contact: 'İletişim' });
 });
 
 test('draft CV detayda da görünür; olmayan id 404', async () => {
@@ -115,7 +131,7 @@ test('kopyalama: sözleşme, (Copy) başlığı, kaynak bağı, sınır', async 
   assert.equal(r.status, 200);
   assertShape(r.body.data, fx('cv_duplicate.json'));
   assert.equal(r.body.data.title, 'Main CV (Copy)');
-  assert.equal(r.body.data.score, 86);
+  assert.equal(r.body.data.score, null);
   const copy = await t.deps.db.one('SELECT * FROM cvs WHERE id = ?', [r.body.data.id]);
   assert.equal(copy.source_cv_id, row.id);
   assert.equal(copy.status, 'saved');
@@ -227,7 +243,8 @@ test('servis: updateContent / setScore / counts / contentToText', async () => {
   assert.equal(got.score, 90);
   await t.deps.cvs.setScore(row.id, 70);
   assert.equal((await t.deps.cvs.getOwned(user, row.id)).score, 70);
-  assert.deepEqual(await t.deps.cvs.counts(user.id), { total: 1, tailored: 1 });
+  // Puanı olan CV analiz edilmiş sayılır (analyzed)
+  assert.deepEqual(await t.deps.cvs.counts(user.id), { total: 1, tailored: 1, analyzed: 1 });
   assert.match(t.deps.cvs.contentToText(got.content), /Yeni Ad[\s\S]*Skills: Figma, Sketch/);
   await assert.rejects(() => t.deps.cvs.getOwned(user, row.id, { statuses: ['draft'] }), { code: 'CV_NOT_FOUND' });
 });
@@ -247,4 +264,37 @@ test('hesap silinince CV\'ler de silinir (cascade)', async () => {
   await t.request('DELETE', '/account', { token: 'test:gone' });
   await t.deps.account.purgeDue();
   assert.equal((await t.deps.db.query('SELECT id FROM cvs WHERE user_id = ?', [user.id])).length, 0);
+});
+
+test('import: geçersiz dosya tipi 422', async () => {
+  await t.request('GET', '/cvs', { token: 'test:importbad' });
+  const r = await t.request('POST', '/cvs/import', {
+    token: 'test:importbad',
+    body: { file: 'data:text/plain;base64,aGVsbG8=' },
+  });
+  assert.equal(r.status, 422);
+});
+
+test('import: PDF/DOCX kayıtlı CV oluşturur', async () => {
+  await t.request('GET', '/cvs', { token: 'test:importok' });
+  const fileText = require('../src/modules/analyses/file_text');
+  const orig = fileText.extractFileText;
+  fileText.extractFileText = async () => 'Alex Morgan\nSenior Designer';
+  try {
+    const r = await t.request('POST', '/cvs/import', {
+      token: 'test:importok',
+      body: {
+        file: 'data:application/pdf;base64,AAAA',
+        file_name: 'My Resume.pdf',
+      },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.data.title, 'My Resume');
+    assert.ok(r.body.data.id);
+    const list = await t.request('GET', '/cvs', { token: 'test:importok' });
+    assert.equal(list.body.data.items.length, 1);
+    assert.equal(list.body.data.items[0].id, r.body.data.id);
+  } finally {
+    fileText.extractFileText = orig;
+  }
 });

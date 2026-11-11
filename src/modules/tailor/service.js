@@ -2,6 +2,7 @@
 
 const { z } = require('zod');
 const { AppError, notFound, conflict } = require('../../core/errors');
+const { cvDict } = require('../../core/i18n');
 const { COSTS } = require('../credits/service');
 const { createTailorRepository } = require('./repository');
 
@@ -158,24 +159,59 @@ function createService(deps) {
       /** @type {any[]} */
       const suggestions = session.suggestions;
       const content = structuredClone(cv.content ?? {});
+      let profile = null;
+      try {
+        profile = await deps.profile.get(user);
+      } catch {
+        profile = null;
+      }
+      deps.cvs.enrichContentIdentity(content, {
+        cvTitle: cv.title,
+        displayName: profile?.name || user.display_name,
+        email: profile?.email || user.email,
+        phone: profile?.phone || user.phone,
+        location: profile?.location,
+      });
       let gain = 0;
       for (const sid of sectionIds) {
         const s = suggestions.find((x) => x.id === sid);
         if (!s) continue;
         if (sid === 'summary') content.summary = s.suggested;
         else if (sid === 'experience') {
-          if (!Array.isArray(content.experiences) || !content.experiences.length) continue; // boşsa yok sayılır
-          content.experiences[0].description = s.suggested;
+          if (!Array.isArray(content.experiences)) content.experiences = [];
+          const parsed = deps.cvs.structureExperienceEntry({
+            ...(content.experiences[0] || {}),
+            description: s.suggested,
+            position: null,
+            company: null,
+            start_date: null,
+            end_date: null,
+            currently_working: false,
+          });
+          if (!content.experiences.length) content.experiences.push(parsed);
+          else content.experiences[0] = { ...content.experiences[0], ...parsed };
         } else content.skills = splitSkills(String(s.suggested));
         gain += Number(s.score_gain) || 0;
       }
+      if (Array.isArray(content.experiences)) {
+        content.experiences = content.experiences.map((e) => deps.cvs.structureExperienceEntry(e));
+      }
+      const roleTitle = content.experiences?.[0]?.position || session.job_title || cv.subtitle;
       const current = Number(session.current_score);
       const newScore = Math.min(100, current + gain);
       await repo.markApplied(user.id, session.id, { ids: sectionIds, content, score: newScore });
       return {
         current_score: current,
         new_score: newScore,
-        preview: deps.cvs.buildPreview({ ...content, subtitle: cv.subtitle }, user.locale),
+        preview: deps.cvs.buildPreview({
+          ...content,
+          subtitle: roleTitle,
+          cv_title: cv.title,
+          _fallback_name: profile?.name || user.display_name,
+          _fallback_email: profile?.email || user.email,
+          _fallback_phone: profile?.phone || user.phone,
+          _fallback_location: profile?.location,
+        }, user.locale),
       };
     },
 
@@ -191,13 +227,18 @@ function createService(deps) {
         const src = await deps.cvs.getOwned(user, session.cv_id, { statuses: ['saved'] }, conn).catch((err) => {
           throw err instanceof AppError && err.status === 404 ? notFound('Kaynak CV bulunamadı', 'CV_NOT_FOUND') : err;
         });
+        const applied = session.applied_content && typeof session.applied_content === 'object'
+          ? session.applied_content
+          : {};
+        const personName = applied.full_name || user.display_name || session.job_title;
+        const roleTitle = applied.experiences?.[0]?.position || session.job_title;
         const created = await deps.cvs.create(
           user,
           {
-            title: `${session.job_title} CV`,
-            subtitle: session.job_title,
+            title: personName ? `${personName} — ${session.job_title}` : `${session.job_title}${cvDict(user.locale).cvSuffix}`,
+            subtitle: roleTitle || session.job_title,
             template_id: src.template_id,
-            content: session.applied_content,
+            content: applied,
             score: session.new_score,
             is_tailored: true,
             language: src.language,

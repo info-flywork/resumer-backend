@@ -13,7 +13,8 @@ before(async () => {
 after(() => t.close());
 
 test('bildirim kuyruğa yazılır, worker kullanıcının dilinde gönderir', async () => {
-  const tr = (await t.request('GET', '/account', { token: 'test:n-tr' })).body.data.user;
+  // Varsayılan dil en (231_users_locale_default_en); tr kullanıcı açıkça seçer
+  const tr = (await t.request('PATCH', '/account', { token: 'test:n-tr', body: { locale: 'tr' } })).body.data.user;
   const en = (await t.request('PATCH', '/account', { token: 'test:n-en', body: { locale: 'en' } })).body.data.user;
   await t.deps.notifications.notify(tr.id, 'welcome', { name: 'Ayşe' }, { data: { route: '/home' } });
   await t.deps.notifications.notify(en.id, 'welcome', { name: 'John' });

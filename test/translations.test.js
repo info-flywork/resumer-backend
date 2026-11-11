@@ -92,7 +92,7 @@ const balance = async (uid) => t.deps.credits.getBalance(await t.deps.users.find
 const post = (uid, body, token = `test:${uid}`) => t.request('POST', '/translations', { token, body });
 const valid = (cv_id, over = {}) => ({ cv_id, target_language: 'de', keep_formatting: true, pro_terminology: false, ...over });
 
-test('çeviri sözleşmeye uyar, draft CV oluşturur, 1 kredi düşer, korunan alanlar kaynaktan gelir', async () => {
+test('çeviri sözleşmeye uyar, kayıtlı CV oluşturur, 1 kredi düşer, korunan alanlar kaynaktan gelir', async () => {
   state.mode = 'ok';
   const { row } = await seed('ok1');
   const before = await balance('ok1');
@@ -106,10 +106,10 @@ test('çeviri sözleşmeye uyar, draft CV oluşturur, 1 kredi düşer, korunan a
   assert.equal(await balance('ok1'), before - 1);
 
   const created = await t.deps.db.one('SELECT * FROM cvs WHERE id = ?', [r.body.data.cv_id]);
-  assert.equal(created.status, 'draft');
+  assert.equal(created.status, 'saved');
   assert.equal(created.language, 'de');
   assert.equal(created.source_cv_id, row.id);
-  assert.equal(created.score, 80);
+  assert.equal(created.score, null);
   assert.equal(created.template_id, null);
   const c = typeof created.content === 'string' ? JSON.parse(created.content) : created.content;
   assert.equal(c.summary, 'T:Designer.');

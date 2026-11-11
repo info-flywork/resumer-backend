@@ -41,13 +41,15 @@ Adres: https://resumer.fly-work.com · PM2 portu: 3080
 | POST | `/ai/portrait` | 🔒 | AI portre üretir (1 kredi) |
 | POST | `/ai/summary` | 🔒 | AI profesyonel özet yazar |
 | POST | `/ai/description` | 🔒 | AI profil açıklamasını iyileştirir |
+| POST | `/ai/experience` | 🔒 | CV deneyim açıklamasını AI ile iyileştirir (`{ position, company, description }` → `{ description }`) |
 | GET | `/ai/portraits/{id}.png` | — | Portre görselini sunar (herkese açık, id tahmin edilemez) |
-| POST | `/analyses` | 🔒 | CV ya da LinkedIn analizi (1 kredi) |
+| POST | `/analyses` | 🔒 | CV, PDF/DOCX dosya veya LinkedIn analizi (1 kredi) |
 | POST | `/analyses/fix` | 🔒 | Analiz önerisini CV’ye uygula |
 | GET | `/templates` | 🔒 | CV şablonları (aktif olanlar, sıraya göre) |
 | GET | `/faq` | 🔒 | Sık sorulan sorular (herkese açık; dil: kullanıcı ya da Accept-Language) |
 | GET | `/me/plan` | 🔒 | Abonelik planı özeti ve AI kredi bakiyesi |
 | POST | `/cvs/score` | 🔒 | Taslak tamlık puanı (0..100, yapay zekâsız, kayıt yazmaz) |
+| POST | `/cv-builder/photo` | 🔒 | CV fotoğrafını yükler (`{ photo: data URL ≤700 KB }`), CV'ye yazılacak herkese açık adresi döner (`{ url }`) |
 | POST | `/cv-builder/submit` | 🔒 | Taslağı CV olarak kaydet (cv_id verilirse o CV'yi güncelle) |
 | GET | `/cvs` | 🔒 | Kullanıcının kayıtlı CV listesi (son güncellenen önce) |
 | DELETE | `/cvs` | 🔒 | CV sil (kalıcı) |
@@ -63,5 +65,8 @@ Adres: https://resumer.fly-work.com · PM2 portu: 3080
 | POST | `/tailor/apply` | 🔒 | Seçilen önerileri uygular, önizleme döner (kredi yok) |
 | POST | `/tailor/save` | 🔒 | Uyarlanmış CV'yi yeni CV olarak kaydeder (idempotent) |
 | POST | `/translations` | 🔒 | CV'yi hedef dile çevirip draft CV oluşturur (1 kredi) |
+
+> CV taslağı (`/cv-builder/submit`, `/cv-builder/draft`) ayrıca `languages[{name, level}]`, `references[{name, position, company, email, phone}]` ve görünüm alanlarını taşır: `accent_color` (#rrggbb), `font` (modern | classic | minimal), `spacing` (compact | normal | relaxed). Önizleme (`preview`) aynı görünüm alanlarını ve Languages / References bölümlerini döner.
+
 
 Ayrıntılı şema: `openapi.json` · kurulum: `README.md`

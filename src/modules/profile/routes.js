@@ -1,6 +1,5 @@
 'use strict';
 
-const { z } = require('zod');
 const { defineModule } = require('../../core/route');
 const { Profile, CvStats, UpdateBody } = require('./schemas');
 

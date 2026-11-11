@@ -16,8 +16,9 @@ function createService(deps) {
 
   /** Sayaçlar — /me.stats ile /cvs/stats aynı kaynaktan @param {{ id: string }} user */
   async function counts(user) {
-    const [c, analyses] = await Promise.all([deps.cvs.counts(user.id), deps.analyses.countByUser(user.id)]);
-    return { cvs: c.total, tailored: c.tailored, analyses };
+    const c = await deps.cvs.counts(user.id);
+    // Analizler: Analizler sekmesindeki satır sayısı (skoru olan CV), ham analiz kaydı değil
+    return { cvs: c.total, tailored: c.tailored, analyses: c.analyzed };
   }
 
   /** @param {import('../auth/repository').UserRow} user */

@@ -11,7 +11,7 @@ function createAnalysesRepository(db) {
     /**
      * Analiz + önerileri (tek transaction'da çağrılır). Önerilere yeni kimlik atanır.
      * @param {string} userId
-     * @param {{ id: string, cv_id: string | null, source: 'cv' | 'linkedin', source_label: string | null, overall_score: number, section_scores: any[], ats: any }} a
+     * @param {{ id: string, cv_id: string | null, source: 'cv' | 'linkedin' | 'file', source_label: string | null, overall_score: number, section_scores: any[], ats: any }} a
      * @param {{ title: string, description: string, priority: string, target_section: string, suggested_text: string | null }[]} recs
      * @param {import('../../config/db').Executor} conn
      * @returns {Promise<string[]>} öneri kimlikleri (sıraya göre)
@@ -68,6 +68,29 @@ function createAnalysesRepository(db) {
     /** @param {string} cvId */
     async hasForCv(cvId) {
       return Boolean(await db.one('SELECT 1 AS ok FROM analyses WHERE cv_id = ? LIMIT 1', [cvId]));
+    },
+
+    /**
+     * CV'nin en son analizi + önerileri.
+     * @param {string} userId @param {string} cvId
+     * @returns {Promise<{ analysis: any, recommendations: any[] } | null>}
+     */
+    async findLatestByCv(userId, cvId) {
+      const analysis = await db.one(
+        `SELECT * FROM analyses
+         WHERE user_id = ? AND cv_id = ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [userId, cvId],
+      );
+      if (!analysis) return null;
+      const recommendations = await db.query(
+        `SELECT * FROM analysis_recommendations
+         WHERE analysis_id = ? AND user_id = ?
+         ORDER BY position ASC`,
+        [analysis.id, userId],
+      );
+      return { analysis, recommendations };
     },
   };
 }

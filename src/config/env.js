@@ -41,6 +41,9 @@ const schema = z.object({
 
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
 
+  /** true → CV limiti, AI kredisi, premium şablon ve rate limit yok (yerel test). */
+  DEV_UNLIMITED: bool.default(false),
+
   REVENUECAT_WEBHOOK_AUTH: z.string().default(''),
   /** RevenueCat secret (sk_…) — satın alma doğrulama ve hesap silmede abone kaydını silme */
   REVENUECAT_SECRET_KEY: z.string().default(''),

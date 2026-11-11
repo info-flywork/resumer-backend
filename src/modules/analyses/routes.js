@@ -1,10 +1,22 @@
 'use strict';
 
+const { z } = require('zod');
 const { defineModule } = require('../../core/route');
 const { AnalysisResult, FixResult, AnalyzeBody, FixBody } = require('./schemas');
 
+const LatestQuery = z.object({ cv_id: z.string().min(1).max(64) });
+
 // Yollar Flutter'daki mock rota tablosuyla birebir aynı (POST /analyses, POST /analyses/fix).
 module.exports = defineModule('analyses', '/analyses', [
+  {
+    method: 'get',
+    path: '/latest',
+    summary: 'CV’nin kayıtlı son analiz sonucu',
+    auth: 'required',
+    request: { query: LatestQuery },
+    response: AnalysisResult,
+    handler: ({ user, query, deps }) => deps.analyses.latest(user, query.cv_id),
+  },
   {
     method: 'post',
     path: '',

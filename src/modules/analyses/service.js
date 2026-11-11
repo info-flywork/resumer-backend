@@ -121,21 +121,67 @@ function createService(deps) {
     hasForCv: (cvId) => repo.hasForCv(cvId),
 
     /**
-     * POST /analyses — kaynak: cv_id → linkedin_url (dosya yüklemesi desteklenmez)
-     * @param {any} user @param {{ cv_id?: string | null, file_name?: string | null, linkedin_url?: string | null }} body
+     * GET /analyses/latest?cv_id= — kayıtlı son analiz sonucu.
+     * @param {any} user @param {string} cvId
+     */
+    async latest(user, cvId) {
+      await deps.cvs.getOwned(user, cvId);
+      const row = await repo.findLatestByCv(user.id, cvId);
+      if (!row) throw notFound('Bu CV için analiz bulunamadı', 'ANALYSIS_NOT_FOUND');
+      const { analysis: a, recommendations } = row;
+      const sectionScores = typeof a.section_scores === 'string'
+        ? JSON.parse(a.section_scores)
+        : a.section_scores;
+      const ats = typeof a.ats === 'string' ? JSON.parse(a.ats) : a.ats;
+      return {
+        id: a.id,
+        cv_id: a.cv_id,
+        overall_score: a.overall_score,
+        section_scores: sectionScores,
+        recommendations: recommendations.map((rec) => ({
+          id: rec.id,
+          title: rec.title,
+          description: rec.description,
+          priority: rec.priority,
+          ...(rec.suggested_text ? { suggested_text: rec.suggested_text } : {}),
+          ...(rec.applied_at ? { applied: true } : {}),
+        })),
+        ats,
+      };
+    },
+
+    /**
+     * POST /analyses — kaynak: cv_id → file (PDF/DOCX) → linkedin_url
+     * @param {any} user
+     * @param {{ cv_id?: string | null, file_name?: string | null, file?: string | null, linkedin_url?: string | null }} body
      */
     async analyze(user, body) {
-      /** @type {{ text: string, source: 'cv' | 'linkedin', label: string | null, cvId: string | null }} */
+      const { extractFileText } = require('./file_text');
+      /** @type {{ text: string, source: 'cv' | 'linkedin' | 'file', label: string | null, cvId: string | null }} */
       let src;
       if (body.cv_id) {
         const cv = await deps.cvs.getOwned(user, body.cv_id);
         src = { text: deps.cvs.contentToText(cv.content), source: 'cv', label: cv.title, cvId: cv.id };
+      } else if (body.file) {
+        deps.ai.assertEnabled();
+        const text = await extractFileText(body.file);
+        if (!text) throw new AppError(422, 'SOURCE_EMPTY', 'Dosyadan metin okunamadı');
+        src = {
+          text,
+          source: 'file',
+          label: (body.file_name || 'upload.pdf').slice(0, 255),
+          cvId: null,
+        };
       } else if (body.linkedin_url) {
         deps.ai.assertEnabled();
         const text = await deps.ai.fetchPageText(body.linkedin_url);
         src = { text, source: 'linkedin', label: body.linkedin_url.slice(0, 255), cvId: null };
       } else if (body.file_name) {
-        throw new AppError(422, 'FILE_UPLOAD_NOT_SUPPORTED', 'Dosya yükleme desteklenmiyor; CV’ni uygulamada oluştur ya da LinkedIn bağlantısı ver');
+        throw new AppError(
+          422,
+          'FILE_UPLOAD_NOT_SUPPORTED',
+          'Dosya içeriği eksik; PDF/DOCX’i yeniden seç',
+        );
       } else {
         throw new AppError(422, 'SOURCE_REQUIRED', 'Analiz için bir CV ya da LinkedIn bağlantısı gerekli');
       }

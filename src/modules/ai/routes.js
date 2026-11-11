@@ -9,6 +9,8 @@ const {
   PortraitResult,
   SummaryResult,
   DescriptionResult,
+  ExperienceBody,
+  ExperienceResult,
 } = require('./schemas');
 
 const HOUR = 3600_000;
@@ -46,6 +48,17 @@ module.exports = defineModule('ai', '/ai', [
     rateLimit: { windowMs: HOUR, max: 30 },
     async: { etaS: 10 },
     handler: ({ user, body, deps }) => deps.ai.description(/** @type {any} */ (user), body),
+  },
+  {
+    method: 'post',
+    path: '/experience',
+    summary: 'AI CV deneyim açıklamasını iyileştirir',
+    auth: 'required',
+    request: { body: ExperienceBody },
+    response: ExperienceResult,
+    rateLimit: { windowMs: HOUR, max: 30 },
+    async: { etaS: 10 },
+    handler: ({ user, body, deps }) => deps.ai.experience(/** @type {any} */ (user), body),
   },
   {
     method: 'get',

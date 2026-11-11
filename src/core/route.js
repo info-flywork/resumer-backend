@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+// eslint-disable-next-line no-unused-vars -- yalnızca JSDoc tiplerinde (z.ZodType)
 const { z } = require('zod');
 const { AppError, unprocessable, forbidden } = require('./errors');
 
@@ -122,7 +123,7 @@ function buildRouter(mod, deps) {
 
     /** @type {import('express').RequestHandler[]} */
     const chain = [];
-    if (def.rateLimit) {
+    if (def.rateLimit && !deps.config.DEV_UNLIMITED) {
       chain.push(
         rateLimit({
           windowMs: def.rateLimit.windowMs,
@@ -139,6 +140,7 @@ function buildRouter(mod, deps) {
     if (def.premium) {
       const entitlement = typeof def.premium === 'string' ? def.premium : null;
       chain.push(async (req, _res, next) => {
+        if (deps.config.DEV_UNLIMITED) return next();
         const user = /** @type {any} */ (req).user;
         const ok = user && (await deps.entitlements.isActive(user.id, entitlement));
         next(ok ? undefined : forbidden('Bu özellik premium üyelere açık', 'PREMIUM_REQUIRED'));

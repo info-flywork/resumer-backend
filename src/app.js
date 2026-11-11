@@ -22,6 +22,9 @@ function createApp(deps, modules) {
   app.use(helmet());
   // JSON cevaplar gzip / br ile ~%70–80 küçülür (1 KB altı sıkıştırılmaz)
   app.use(compression({ threshold: 1024 }));
+  // CV PDF/DOCX (base64) için büyük gövde
+  app.use('/analyses', express.json({ limit: '15mb' }));
+  app.use('/cvs/import', express.json({ limit: '15mb' }));
   app.use(express.json({ limit: '1mb' }));
   // GET cevapları: Express zayıf ETag üretir → istemci If-None-Match gönderirse 304 (gövde yok).
   // Kullanıcıya özel veri ara sunucularda saklanmaz, her seferinde ETag ile doğrulanır.
@@ -51,16 +54,18 @@ function createApp(deps, modules) {
   });
 
   // Genel IP sınırı (uç bazında ayrıca sınır route tanımında)
-  app.use(
-    rateLimit({
-      windowMs: 60_000,
-      limit: config.RATE_LIMIT_PER_MINUTE,
-      standardHeaders: 'draft-8',
-      legacyHeaders: false,
-      skip: (req) => req.path === '/health',
-      handler: (_req, _res, next) => next(new AppError(429, 'RATE_LIMITED', 'Çok fazla istek, biraz sonra tekrar dene')),
-    }),
-  );
+  if (!config.DEV_UNLIMITED) {
+    app.use(
+      rateLimit({
+        windowMs: 60_000,
+        limit: config.RATE_LIMIT_PER_MINUTE,
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        skip: (req) => req.path === '/health',
+        handler: (_req, _res, next) => next(new AppError(429, 'RATE_LIMITED', 'Çok fazla istek, biraz sonra tekrar dene')),
+      }),
+    );
+  }
 
   for (const mod of modules) app.use(mod.prefix || '/', buildRouter(mod, deps));
 
@@ -72,7 +77,6 @@ function createApp(deps, modules) {
   app.use((req, _res, next) => next(new AppError(404, 'NOT_FOUND', `${req.method} ${req.path} bulunamadı`)));
 
   // Hata zarfı — Flutter BaseResponse: { status: "error", message, code, data: null, errors? }
-  // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, _next) => {
     const known = err instanceof AppError;
     const bodyError = err?.type === 'entity.parse.failed' || err?.type === 'entity.too.large';

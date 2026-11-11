@@ -118,6 +118,20 @@ test('analiz sözleşmeye uyar; kredi düşer, CV puanı güncellenir', async ()
   assert.equal(await t.deps.analyses.hasForCv(cv.id), true);
 });
 
+test('GET /analyses/latest: kayıtlı sonucu döner; yoksa 404', async () => {
+  const { token, cv } = await userWithCv();
+  const missing = await t.request('GET', `/analyses/latest?cv_id=${cv.id}`, { token });
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.code, 'ANALYSIS_NOT_FOUND');
+  const created = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } });
+  assert.equal(created.status, 200);
+  const latest = await t.request('GET', `/analyses/latest?cv_id=${cv.id}`, { token });
+  assert.equal(latest.status, 200, JSON.stringify(latest.body));
+  assert.equal(latest.body.data.id, created.body.data.id);
+  assert.equal(latest.body.data.overall_score, created.body.data.overall_score);
+  assert.equal(latest.body.data.recommendations.length, created.body.data.recommendations.length);
+});
+
 test('LinkedIn kaynağı: sayfa okunur, cv_id null döner', async () => {
   const { token } = await userWithCv();
   const r = await t.request('POST', '/analyses', { token, body: { linkedin_url: 'https://www.linkedin.com/in/ahmet' } });

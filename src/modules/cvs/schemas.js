@@ -19,13 +19,41 @@ const PreviewItem = z.object({
   title: z.string().optional(),
   meta: z.string().optional(),
   body: z.string().optional(),
+  /** Zengin şablonlar: kurum ve tarih ayrı (meta birleşik hâli) */
+  subtitle: z.string().optional(),
+  date: z.string().optional(),
 });
+
+/** summary | experience | education | skills | certificates | links | languages | references */
+const PreviewSectionKind = z.enum([
+  'summary', 'experience', 'education', 'skills', 'certificates', 'links', 'languages', 'references',
+]);
 
 const ResumePreviewData = z.object({
   name: z.string(),
   title: z.string(),
   contact: z.string(),
-  sections: z.array(z.object({ heading: z.string(), items: z.array(PreviewItem) })),
+  template_id: z.string().nullable().optional(),
+  photo: z.string().nullable().optional(),
+  accent_color: z.string().nullable().optional(),
+  font: z.string().nullable().optional(),
+  spacing: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  /** Şablon etiketleri (CV dilinde), ör. { contact: 'İletişim' } */
+  labels: z.object({ contact: z.string() }).optional(),
+  sections: z.array(z.object({
+    kind: PreviewSectionKind.optional(),
+    heading: z.string(),
+    items: z.array(PreviewItem),
+  })),
+});
+
+/** Yüklenen orijinal dosya meta (PDF/DOCX); içerik GET /cvs/file ile gelir */
+const CvSourceFile = z.object({
+  name: z.string(),
+  mime: z.string(),
 });
 
 const CvDetail = z.object({
@@ -34,7 +62,10 @@ const CvDetail = z.object({
   subtitle: z.string(),
   updated_text: z.string(),
   score: z.number().int().nullable(),
+  /** ISO 639-1; yoksa null (istemci / detayda metinden tahmin edilebilir) */
+  language: z.string().nullable().optional(),
   preview: ResumePreviewData,
+  source_file: CvSourceFile.nullable().optional(),
 });
 
 const CvDraft = z.object({
@@ -81,12 +112,41 @@ const CvDraft = z.object({
     }),
   ),
   links: z.array(z.object({ url: z.string().nullable(), logo: z.string().nullable() })),
+  languages: z.array(z.object({ name: z.string().nullable(), level: z.string().nullable() })),
+  references: z.array(
+    z.object({
+      name: z.string().nullable(),
+      position: z.string().nullable(),
+      company: z.string().nullable(),
+      email: z.string().nullable(),
+      phone: z.string().nullable(),
+    }),
+  ),
+  accent_color: z.string().nullable(),
+  font: z.string().nullable(),
+  spacing: z.string().nullable(),
 });
 
 const ListQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) });
 const IdQuery = z.object({ id: z.string().min(1).max(64) });
 const CvIdQuery = z.object({ cv_id: z.string().min(1).max(64) });
 const IdBody = z.object({ id: z.string().min(1).max(64) }).strict();
+
+const fileDataUrl = z
+  .string()
+  .max(14_000_000)
+  .regex(
+    /^data:(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document);base64,/i,
+    'PDF veya DOCX data URL olmalı',
+  );
+
+/** Dışarıdan yüklenen CV → kayıtlı CV */
+const ImportBody = z
+  .object({
+    file: fileDataUrl,
+    file_name: z.string().trim().min(1).max(255).nullable().optional(),
+  })
+  .strict();
 
 // Uygulama çeviri ekranından tüm CvSummary + preview alanlarını da gönderir; kabul edilir, yok sayılır
 // (içerik sunucudadır — BE-12). id yoksa / null ise serviste 422 CV_ID_REQUIRED.
@@ -110,4 +170,17 @@ const SaveBody = z
   })
   .strict();
 
-module.exports = { CvSummary, CvList, CvDetail, CvDraft, ListQuery, IdQuery, CvIdQuery, IdBody, SaveBody, ResumePreviewData };
+module.exports = {
+  CvSummary,
+  CvList,
+  CvDetail,
+  CvDraft,
+  CvSourceFile,
+  ListQuery,
+  IdQuery,
+  CvIdQuery,
+  IdBody,
+  ImportBody,
+  SaveBody,
+  ResumePreviewData,
+};

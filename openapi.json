@@ -1410,6 +1410,132 @@
         }
       }
     },
+    "/ai/experience": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "AI CV deneyim açıklamasını iyileştirir",
+        "operationId": "post_ai_experience",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "description"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "company": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/portraits/{id}.png": {
       "get": {
         "tags": [
@@ -1453,6 +1579,239 @@
                     },
                     "data": {
                       "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyses/latest": {
+      "get": {
+        "tags": [
+          "analyses"
+        ],
+        "summary": "CV’nin kayıtlı son analiz sonucu",
+        "operationId": "get_analyses_latest",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cv_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "cv_id": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "overall_score": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "section_scores": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "score": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "score"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "recommendations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "high",
+                                  "medium",
+                                  "low"
+                                ]
+                              },
+                              "suggested_text": {
+                                "type": "string"
+                              },
+                              "applied": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "priority"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "ats": {
+                          "type": "object",
+                          "properties": {
+                            "score": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "found_keywords": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "missing_keywords": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "format_checks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "passed": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "label",
+                                  "passed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "score",
+                            "found_keywords",
+                            "missing_keywords",
+                            "format_checks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "cv_id",
+                        "overall_score",
+                        "section_scores",
+                        "recommendations",
+                        "ats"
+                      ],
+                      "additionalProperties": false
                     }
                   }
                 }
@@ -1603,6 +1962,9 @@
                               },
                               "suggested_text": {
                                 "type": "string"
+                              },
+                              "applied": {
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -1741,6 +2103,12 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 255
+                  },
+                  "file": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 14000000,
+                    "pattern": "^data:(application\\/pdf|application\\/msword|application\\/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document);base64,"
                   },
                   "linkedin_url": {
                     "nullable": true,
@@ -2583,6 +2951,84 @@
                       "additionalProperties": false
                     }
                   },
+                  "languages": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 60
+                        },
+                        "level": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "references": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "position": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "company": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 255
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 32
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "accent_color": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "font": {
+                    "nullable": true,
+                    "type": "string",
+                    "enum": [
+                      "modern",
+                      "classic",
+                      "minimal"
+                    ]
+                  },
+                  "spacing": {
+                    "nullable": true,
+                    "type": "string",
+                    "enum": [
+                      "compact",
+                      "normal",
+                      "relaxed"
+                    ]
+                  },
                   "pending_certificate": {
                     "nullable": true,
                     "type": "object",
@@ -2631,6 +3077,127 @@
                     "additionalProperties": false
                   }
                 },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cv-builder/photo": {
+      "post": {
+        "tags": [
+          "cv_builder"
+        ],
+        "summary": "CV fotoğrafını yükler, CV'ye yazılacak herkese açık adresi döner (kredi yok)",
+        "operationId": "post_cv_builder_photo",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "pattern": "^data:image\\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$"
+                  }
+                },
+                "required": [
+                  "photo"
+                ],
                 "additionalProperties": false
               }
             }
@@ -2958,6 +3525,84 @@
                       },
                       "additionalProperties": false
                     }
+                  },
+                  "languages": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 60
+                        },
+                        "level": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 40
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "references": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        "position": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "company": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 255
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 32
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "accent_color": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "font": {
+                    "nullable": true,
+                    "type": "string",
+                    "enum": [
+                      "modern",
+                      "classic",
+                      "minimal"
+                    ]
+                  },
+                  "spacing": {
+                    "nullable": true,
+                    "type": "string",
+                    "enum": [
+                      "compact",
+                      "normal",
+                      "relaxed"
+                    ]
                   },
                   "pending_certificate": {
                     "nullable": true,
@@ -3522,6 +4167,10 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "language": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "preview": {
                           "type": "object",
                           "properties": {
@@ -3534,11 +4183,68 @@
                             "contact": {
                               "type": "string"
                             },
+                            "template_id": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "photo": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "accent_color": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "font": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "spacing": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "location": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "labels": {
+                              "type": "object",
+                              "properties": {
+                                "contact": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "contact"
+                              ],
+                              "additionalProperties": false
+                            },
                             "sections": {
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "summary",
+                                      "experience",
+                                      "education",
+                                      "skills",
+                                      "certificates",
+                                      "links",
+                                      "languages",
+                                      "references"
+                                    ]
+                                  },
                                   "heading": {
                                     "type": "string"
                                   },
@@ -3554,6 +4260,12 @@
                                           "type": "string"
                                         },
                                         "body": {
+                                          "type": "string"
+                                        },
+                                        "subtitle": {
+                                          "type": "string"
+                                        },
+                                        "date": {
                                           "type": "string"
                                         }
                                       },
@@ -3576,6 +4288,23 @@
                             "sections"
                           ],
                           "additionalProperties": false
+                        },
+                        "source_file": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "mime": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "mime"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -3587,6 +4316,109 @@
                         "preview"
                       ],
                       "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cvs/file": {
+      "get": {
+        "tags": [
+          "cvs"
+        ],
+        "summary": "Yüklenen orijinal CV dosyası (PDF/DOCX)",
+        "operationId": "get_cvs_file",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
                     }
                   }
                 }
@@ -3779,6 +4611,157 @@
                 },
                 "required": [
                   "id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cvs/import": {
+      "post": {
+        "tags": [
+          "cvs"
+        ],
+        "summary": "PDF/DOCX yükleyip kayıtlı CV oluştur (tailor vb. için)",
+        "operationId": "post_cvs_import",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "subtitle": {
+                          "type": "string"
+                        },
+                        "updated_text": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "is_tailored": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "subtitle",
+                        "updated_text",
+                        "score",
+                        "is_tailored"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "maxLength": 14000000,
+                    "pattern": "^data:(application\\/pdf|application\\/msword|application\\/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document);base64,"
+                  },
+                  "file_name": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "file"
                 ],
                 "additionalProperties": false
               }
@@ -4032,6 +5015,75 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "languages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "level": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "level"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "references": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "position": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "company": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "email": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "phone": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "position",
+                              "company",
+                              "email",
+                              "phone"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "accent_color": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "font": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "spacing": {
+                          "nullable": true,
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -4048,7 +5100,12 @@
                         "educations",
                         "skills",
                         "certificates",
-                        "links"
+                        "links",
+                        "languages",
+                        "references",
+                        "accent_color",
+                        "font",
+                        "spacing"
                       ],
                       "additionalProperties": false
                     }
@@ -4949,11 +6006,68 @@
                             "contact": {
                               "type": "string"
                             },
+                            "template_id": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "photo": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "accent_color": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "font": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "spacing": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "email": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phone": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "location": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "labels": {
+                              "type": "object",
+                              "properties": {
+                                "contact": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "contact"
+                              ],
+                              "additionalProperties": false
+                            },
                             "sections": {
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "summary",
+                                      "experience",
+                                      "education",
+                                      "skills",
+                                      "certificates",
+                                      "links",
+                                      "languages",
+                                      "references"
+                                    ]
+                                  },
                                   "heading": {
                                     "type": "string"
                                   },
@@ -4969,6 +6083,12 @@
                                           "type": "string"
                                         },
                                         "body": {
+                                          "type": "string"
+                                        },
+                                        "subtitle": {
+                                          "type": "string"
+                                        },
+                                        "date": {
                                           "type": "string"
                                         }
                                       },

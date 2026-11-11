@@ -2,7 +2,18 @@
 
 const { z } = require('zod');
 const { defineModule } = require('../../core/route');
-const { CvSummary, CvList, CvDetail, CvDraft, ListQuery, IdQuery, CvIdQuery, IdBody, SaveBody } = require('./schemas');
+const {
+  CvSummary,
+  CvList,
+  CvDetail,
+  CvDraft,
+  ListQuery,
+  IdQuery,
+  CvIdQuery,
+  IdBody,
+  ImportBody,
+  SaveBody,
+} = require('./schemas');
 
 // Yollar Flutter'daki mock rota tablosuyla birebir aynı (GET /cvs/detail?id=…, GET /cv-builder/draft?cv_id=…).
 // Modül iki önek taşır (/cvs, /cv-builder): prefix boş, yollar tam yazılır.
@@ -26,6 +37,23 @@ module.exports = defineModule('cvs', '', [
     handler: ({ user, query, deps }) => deps.cvs.detail(user, query.id),
   },
   {
+    method: 'get',
+    path: '/cvs/file',
+    summary: 'Yüklenen orijinal CV dosyası (PDF/DOCX)',
+    auth: 'required',
+    request: { query: IdQuery },
+    raw: true,
+    handler: async ({ user, query, res, deps }) => {
+      const file = await deps.cvs.sourceFile(user, query.id);
+      res.set({
+        'Content-Type': file.mime,
+        'Content-Disposition': `inline; filename="${encodeURIComponent(file.name)}"`,
+        'Cache-Control': 'private, no-store',
+      });
+      res.send(file.body);
+    },
+  },
+  {
     method: 'post',
     path: '/cvs/duplicate',
     summary: 'CV kopyala (ücretsiz planda sınırlı)',
@@ -43,6 +71,16 @@ module.exports = defineModule('cvs', '', [
     request: { query: IdQuery },
     response: z.object({ id: z.string() }),
     handler: ({ user, query, deps }) => deps.cvs.remove(user, query.id),
+  },
+  {
+    method: 'post',
+    path: '/cvs/import',
+    summary: 'PDF/DOCX yükleyip kayıtlı CV oluştur (tailor vb. için)',
+    auth: 'required',
+    rateLimit: { windowMs: 60_000, max: 10 },
+    request: { body: ImportBody },
+    response: CvSummary,
+    handler: ({ user, body, deps }) => deps.cvs.importFromFile(user, body),
   },
   {
     method: 'post',

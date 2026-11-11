@@ -14,6 +14,7 @@ const path = require('node:path');
  *   memory — testler
  *
  * @typedef {{ put: (key: string, body: Buffer, contentType: string) => Promise<string>, remove: (key: string) => Promise<void>,
+ *   read?: (key: string) => Promise<Buffer>,
  *   url: (key: string) => string, prefix: string, driver: string, files?: Map<string, Buffer> }} Storage
  */
 
@@ -40,6 +41,12 @@ function createStorage(config, { fetch: f = fetch, root = path.resolve('uploads'
         if (!r.ok) throw new Error(`CDN yükleme hatası (HTTP ${r.status})`);
         return url(key);
       },
+      // Storage API'den (kimlikli) okunur: CDN önbelleğine/eski 404'e takılmaz, özel dosyalar için de çalışır.
+      async read(key) {
+        const r = await f(`${base}/${full(key)}`, { headers, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) throw new Error(`CDN okuma hatası (HTTP ${r.status})`);
+        return Buffer.from(await r.arrayBuffer());
+      },
       async remove(key) {
         const r = await f(`${base}/${full(key)}`, { method: 'DELETE', headers, signal: AbortSignal.timeout(15_000) });
         if (!r.ok && r.status !== 404) throw new Error(`CDN silme hatası (HTTP ${r.status})`);
@@ -53,6 +60,11 @@ function createStorage(config, { fetch: f = fetch, root = path.resolve('uploads'
     return {
       driver, prefix, url, files,
       async put(key, body) { files.set(full(key), body); return url(key); },
+      async read(key) {
+        const buf = files.get(full(key));
+        if (!buf) throw new Error('Dosya bulunamadı');
+        return buf;
+      },
       async remove(key) { files.delete(full(key)); },
     };
   }
@@ -65,6 +77,9 @@ function createStorage(config, { fetch: f = fetch, root = path.resolve('uploads'
       await fs.mkdir(path.dirname(p), { recursive: true });
       await fs.writeFile(p, body);
       return url(key);
+    },
+    async read(key) {
+      return fs.readFile(path.join(root, full(key)));
     },
     async remove(key) {
       await fs.rm(path.join(root, full(key)), { force: true });

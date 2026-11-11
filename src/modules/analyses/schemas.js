@@ -13,6 +13,8 @@ const Recommendation = z.object({
   description: z.string(),
   priority: Priority,
   suggested_text: z.string().optional(),
+  /** Kayıtlı analizde öneri daha önce uygulandıysa */
+  applied: z.boolean().optional(),
 });
 
 const AnalysisResult = z.object({
@@ -44,10 +46,20 @@ const linkedinUrl = z
     }
   }, 'Geçerli bir LinkedIn bağlantısı gir');
 
+/** data:<pdf|doc|docx>;base64,... — en çok ~10 MB dosya (base64 şişmesiyle ~14 MB) */
+const fileDataUrl = z
+  .string()
+  .max(14_000_000)
+  .regex(
+    /^data:(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document);base64,/i,
+    'PDF veya DOCX data URL olmalı',
+  );
+
 const AnalyzeBody = z
   .object({
     cv_id: z.string().max(64).nullable().optional(),
     file_name: z.string().max(255).nullable().optional(),
+    file: fileDataUrl.nullable().optional(),
     linkedin_url: linkedinUrl.nullable().optional(),
   })
   .strict();

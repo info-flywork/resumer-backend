@@ -10,7 +10,7 @@
     "preview": {
       "name": "Alex Morgan",
       "title": "UI/UX Designer",
-      "contact": "alex.morgan@email.com · +1 555 0100 · New York",
+      "contact": "alex.morgan@email.com - +1 555 0100 - New York",
       "sections": [
         {"heading": "Experience", "items": [{"title": "Senior Product Designer", "meta": "Acme Inc. · 2021 - Present", "body": "Led the redesign of the core mobile product."}]},
         {"heading": "Education", "items": [{"title": "BA in Graphic Design", "meta": "Parsons · 2014 - 2018"}]}

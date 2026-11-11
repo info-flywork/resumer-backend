@@ -38,9 +38,27 @@ test('GET /templates sözleşmeye uyar, sıralı gelir, premium işaretlidir', a
   const r = await t.request('GET', '/templates', { token: 'test:tpl' });
   assert.equal(r.status, 200);
   assertShape(r.body.data, fixture('templates.json'));
-  assert.deepEqual(r.body.data.items.map((i) => i.id), ['modern', 'classic', 'executive']);
-  assert.equal(r.body.data.items[2].is_premium, true);
-  assert.equal(r.body.data.items[0].image, 'assets/images/img_template_modern.png');
+  const ids = r.body.data.items.map((i) => i.id);
+  assert.equal(ids.length, 53);
+  assert.deepEqual(ids, [
+    'horizon', 'atelier', 'prime',
+    'onyx', 'verdant', 'lumen', 'cobalt', 'ember', 'nova',
+    'sable', 'linea', 'tabula', 'apex', 'crimson', 'midnight', 'vertex', 'amber', 'azure',
+    'harbor', 'petal', 'graphite', 'dune', 'monarch', 'pixel', 'stripe', 'glacier',
+    'orbit', 'kraft', 'metro', 'ivory', 'bloom', 'compass', 'noir',
+    'modern', 'aurora', 'nexus', 'slate', 'mono', 'pulse',
+    'classic', 'elegant', 'atlas', 'meridian', 'folio',
+    'executive', 'summit', 'ledger', 'boardroom', 'capital',
+    'creative', 'vivid', 'studio', 'prism',
+  ]);
+  assert.equal(r.body.data.items.find((i) => i.id === 'executive').is_premium, true);
+  assert.equal(r.body.data.items.find((i) => i.id === 'horizon').is_premium, true);
+  assert.equal(r.body.data.items.find((i) => i.id === 'prime').is_premium, false);
+  assert.equal(r.body.data.items[0].image, 'assets/images/img_template_horizon.png');
+  assert.equal(
+    r.body.data.items.find((i) => i.id === 'classic').image,
+    'assets/images/img_template_classic.png',
+  );
 });
 
 test('GET /templates kimlik ister', async () => {
@@ -50,7 +68,8 @@ test('GET /templates kimlik ister', async () => {
 test('pasif şablon listede görünmez', async () => {
   await t.deps.db.run("UPDATE cv_templates SET is_active = 0 WHERE id = 'classic'");
   const r = await t.request('GET', '/templates', { token: 'test:tpl2' });
-  assert.deepEqual(r.body.data.items.map((i) => i.id), ['modern', 'executive']);
+  assert.equal(r.body.data.items.length, 52);
+  assert.ok(!r.body.data.items.some((i) => i.id === 'classic'));
   await t.deps.db.run("UPDATE cv_templates SET is_active = 1 WHERE id = 'classic'");
 });
 
@@ -63,9 +82,12 @@ test('GET /faq kimliksiz açık, sözleşmeye uyar, lorem içermez', async () =>
 });
 
 test('GET /faq dil: Accept-Language, kullanıcı dili, yoksa en', async () => {
+  // 230_faqs_locales her dil için SSS ekler; testin eklediği tr kaydı da listede olmalı
   await t.deps.db.run("INSERT INTO faqs (id, locale, question, answer, sort_order) VALUES ('faq_tr_1', 'tr', 'Soru?', 'Cevap.', 1)");
+  const trIds = (await t.deps.db.query("SELECT id FROM faqs WHERE locale = 'tr' ORDER BY sort_order, id")).map((r) => r.id);
   const tr = await t.request('GET', '/faq', { headers: { 'Accept-Language': 'tr-TR,tr;q=0.9' } });
-  assert.deepEqual(tr.body.data.items.map((i) => i.id), ['faq_tr_1']);
+  assert.deepEqual(tr.body.data.items.map((i) => i.id).sort(), [...trIds].sort());
+  assert.ok(trIds.includes('faq_tr_1'));
   const de = await t.request('GET', '/faq', { headers: { 'Accept-Language': 'de' } });
   assert.equal(de.body.data.items.length, 3);
 
@@ -74,7 +96,7 @@ test('GET /faq dil: Accept-Language, kullanıcı dili, yoksa en', async () => {
   const user = await t.deps.users.findByFirebaseUid('loc');
   await t.deps.db.run("UPDATE users SET locale = 'tr' WHERE id = ?", [user.id]);
   const r = await t.request('GET', '/faq', { token: 'test:loc', headers: { 'Accept-Language': 'en' } });
-  assert.deepEqual(r.body.data.items.map((i) => i.id), ['faq_tr_1']);
+  assert.deepEqual(r.body.data.items.map((i) => i.id).sort(), [...trIds].sort());
 });
 
 test('deps.content.getTemplate: var olan / premium / yok', async () => {

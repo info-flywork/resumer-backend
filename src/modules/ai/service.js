@@ -24,12 +24,22 @@ const DESCRIPTION_SCHEMA = {
   required: ['description'],
   additionalProperties: false,
 };
+const EXPERIENCE_SCHEMA = {
+  type: 'object',
+  properties: { description: { type: 'string' } },
+  required: ['description'],
+  additionalProperties: false,
+};
 const TONES = {
   professional: 'professional and polished',
   dynamic: 'energetic and action-oriented',
   creative: 'creative and distinctive',
   friendly: 'warm and approachable',
 };
+
+const PHOTO_EXT = /** @type {Record<string, string>} */ ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' });
+/** CV fotoğrafının CDN yolu @param {string} id @param {string} mime */
+const cvPhotoKey = (id, mime) => `cv_photos/${id}.${PHOTO_EXT[mime] ?? 'jpg'}`;
 
 /** CDN yolu (uygulama klasörünün içinde) @param {string} id */
 const portraitKey = (id) => `portraits/${id}.png`;
@@ -52,7 +62,12 @@ function createService(deps) {
   const repo = createAiRepository(deps.db);
   const doFetch = () => /** @type {typeof fetch} */ (deps.fetch ?? globalThis.fetch);
   const apiKey = () => extra('OPENAI_API_KEY');
-  const openai = createOpenAiClient({ apiKey, doFetch, retryDelayMs: Number(deps.aiRetryDelayMs ?? 500) });
+  const openai = createOpenAiClient({
+    apiKey,
+    doFetch,
+    retryDelayMs: Number(deps.aiRetryDelayMs ?? 500),
+    log: (msg, meta) => deps.logger.error(msg, meta),
+  });
   const fetcher = createFetcher({ doFetch, lookup: () => deps.dnsLookup ?? systemLookup() });
 
   const ai = {
@@ -155,6 +170,56 @@ function createService(deps) {
     },
 
     /**
+     * POST /ai/experience — CV deneyim açıklamasını iyileştirir (kredi düşmez, rate limit korur)
+     * @param {{ locale?: string }} user @param {{ position: string, company: string, description: string }} body
+     */
+    async experience(user, body) {
+      ai.assertEnabled();
+      const out = await ai.json({
+        system:
+          `You improve the work-experience description of a resume. Write 2-4 concise, achievement-oriented sentences, at most 600 characters, ` +
+          `in ${languageName(user.locale)}, without first-person pronouns, truthful to the facts given (do not invent employers, numbers, tools or years). Output JSON only.`,
+        user:
+          `Position: ${body.position || '(none)'}\n` +
+          `Company: ${body.company || '(none)'}\n` +
+          `Current description: ${body.description || '(none — write a short description from the position)'}`,
+        schema: EXPERIENCE_SCHEMA,
+        schemaName: 'experience_description',
+        maxTokens: 400,
+      });
+      const text = typeof out?.description === 'string' ? out.description.trim() : '';
+      if (!text) throw new AppError(502, 'AI_FAILED', 'Yapay zekâ şu an yanıt veremedi');
+      return { description: text.slice(0, 600) };
+    },
+
+    /**
+     * POST /cv-builder/photo — CV fotoğrafını kalıcı, herkese açık adrese taşır (AI yok, kredi yok).
+     * Portrelerle aynı saklama: CDN (Bunny) varsa orada, yoksa / yükleme olmazsa veritabanında
+     * (/ai/portraits/:id.png sunar). Hesap silinince portrelerle birlikte silinir.
+     * @param {{ id: string }} user @param {{ photo: string }} body
+     */
+    async uploadCvPhoto(user, body) {
+      const m = DATA_URL.exec(body.photo);
+      if (!m) throw new AppError(422, 'PHOTO_REQUIRED', 'Fotoğraf gerekli');
+      const mime = body.photo.slice(5, body.photo.indexOf(';'));
+      const image = Buffer.from(m[1], 'base64');
+      const id = randomUUID();
+      if (deps.storage.driver === 'bunny') {
+        const key = cvPhotoKey(id, mime);
+        try {
+          const url = await deps.storage.put(key, image, mime);
+          await repo.insertPortrait(id, user.id, mime, null, key);
+          return { url };
+        } catch (err) {
+          deps.logger.error('cv_photo_cdn_upload_failed', { id, err });
+        }
+      }
+      await repo.insertPortrait(id, user.id, mime, image, null);
+      const base = (deps.config.PUBLIC_BASE_URL || DEFAULT_API_URL).replace(/\/+$/, '');
+      return { url: `${base}/ai/portraits/${id}.png` };
+    },
+
+    /**
      * GET /ai/portraits/:id.png — CDN'deyse oranın adresi (yönlendirme), değilse veritabanındaki görsel
      * @param {string} id @returns {Promise<{ redirect: string } | { mime: string, image: Buffer }>}
      */
@@ -173,4 +238,4 @@ function createService(deps) {
   return ai;
 }
 
-module.exports = { createService, portraitKey };
+module.exports = { createService, portraitKey, cvPhotoKey };

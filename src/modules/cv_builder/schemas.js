@@ -28,6 +28,12 @@ const Certificate = z
 
 const Link = z.object({ url: s(1000), logo: s(1000) }).strict();
 
+const Language = z.object({ name: s(60), level: s(40) }).strict();
+
+const Reference = z
+  .object({ name: s(100), position: s(120), company: s(120), email: s(255), phone: s(32) })
+  .strict();
+
 // Tarihler serbest metindir ('Ekim 2023'). Boş e-posta kabul edilir, doluysa biçim denetlenir.
 const CvDraftBody =
   shared ??
@@ -48,6 +54,12 @@ const CvDraftBody =
       skills: z.array(z.string().max(60)).max(50).optional(),
       certificates: z.array(Certificate).max(20).optional(),
       links: z.array(Link).max(10).optional(),
+      languages: z.array(Language).max(10).optional(),
+      references: z.array(Reference).max(5).optional(),
+      // Görünüm: boş / null → şablonun varsayılanı
+      accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, '#rrggbb olmalı').nullable().optional(),
+      font: z.enum(['modern', 'classic', 'minimal']).nullable().optional(),
+      spacing: z.enum(['compact', 'normal', 'relaxed']).nullable().optional(),
       pending_certificate: Certificate.nullable().optional(), // saklanmaz, yok sayılır
     })
     .strict();

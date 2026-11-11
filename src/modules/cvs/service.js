@@ -1,155 +1,24 @@
 'use strict';
 
 const { AppError, notFound, forbidden } = require('../../core/errors');
+const { cvDict: dict } = require('../../core/i18n');
 const { createCvsRepository } = require('./repository');
+const {
+  str,
+  detectLanguage,
+  updatedText,
+  guessPersonName,
+  structureExperienceEntry,
+  enrichContentIdentity,
+  normalizeDraft,
+  parseImportedCvText,
+  buildPreview,
+  contentToText,
+} = require('./content');
 
 /** Ücretsiz kullanıcının en fazla kayıtlı CV sayısı (premium sınırsız) */
 const FREE_LIMIT = 3;
 const PREMIUM = 'Resumer Pro';
-
-/** Sunum metinleri (locale sözlüğü); bilinmeyen dil en'e düşer */
-const DICT = {
-  en: {
-    updated: 'Updated {when}', justNow: 'just now', copy: ' (Copy)', present: 'Present',
-    summary: 'Summary', experience: 'Experience', education: 'Education', skills: 'Skills', certificates: 'Certificates', links: 'Links',
-  },
-  tr: {
-    updated: 'Güncellendi: {when}', justNow: 'az önce', copy: ' (Kopya)', present: 'Devam ediyor',
-    summary: 'Özet', experience: 'Deneyim', education: 'Eğitim', skills: 'Yetenekler', certificates: 'Sertifikalar', links: 'Bağlantılar',
-  },
-};
-
-/** @param {string | undefined} locale */
-const langOf = (locale) => (String(locale || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en');
-/** @param {string | undefined} locale */
-const dict = (locale) => DICT[langOf(locale)];
-
-/** "Updated 2 days ago" — kullanıcının dilinde (mock'taki updated_text) */
-function updatedText(date, locale) {
-  const d = dict(locale);
-  const diff = (new Date(date).getTime() - Date.now()) / 1000;
-  const steps = /** @type {const} */ ([['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]]);
-  let when = d.justNow;
-  for (const [unit, sec] of steps) {
-    if (Math.abs(diff) >= sec) {
-      when = new Intl.RelativeTimeFormat(langOf(locale), { numeric: 'auto' }).format(Math.round(diff / sec), unit);
-      break;
-    }
-  }
-  return d.updated.replace('{when}', when);
-}
-
-/** @param {unknown} v @returns {string | null} */
-const text = (v) => (typeof v === 'string' ? v : null);
-/** @param {unknown} v @returns {any[]} */
-const arr = (v) => (Array.isArray(v) ? v : []);
-/** @param {unknown} v @returns {string} */
-const str = (v) => (typeof v === 'string' ? v.trim() : '');
-/** Boş olmayanları ayraçla birleştirir */
-const join = (parts, sep = ' · ') => parts.map(str).filter(Boolean).join(sep);
-
-/**
- * İçeriği CvDraft şekline getirir: eksik dizi → [], eksik metin → null.
- * @param {any} c
- */
-function normalizeDraft(c) {
-  const o = c && typeof c === 'object' ? c : {};
-  return {
-    template_id: text(o.template_id),
-    full_name: text(o.full_name),
-    email: text(o.email),
-    phone: text(o.phone),
-    location: text(o.location),
-    photo: text(o.photo),
-    summary: text(o.summary),
-    tone: text(o.tone),
-    keywords: arr(o.keywords).filter((k) => typeof k === 'string'),
-    experiences: arr(o.experiences).map((e) => ({
-      company: text(e?.company),
-      position: text(e?.position),
-      location: text(e?.location),
-      description: text(e?.description),
-      start_date: text(e?.start_date),
-      end_date: text(e?.end_date),
-      currently_working: Boolean(e?.currently_working),
-    })),
-    educations: arr(o.educations).map((e) => ({
-      school: text(e?.school),
-      degree: text(e?.degree),
-      field_of_study: text(e?.field_of_study),
-      period: text(e?.period),
-      description: text(e?.description),
-    })),
-    skills: arr(o.skills).filter((s) => typeof s === 'string'),
-    certificates: arr(o.certificates).map((e) => ({
-      name: text(e?.name),
-      issuer: text(e?.issuer),
-      description: text(e?.description),
-      issue_date: text(e?.issue_date),
-      expiry_date: text(e?.expiry_date),
-      credential_id: text(e?.credential_id),
-      url: text(e?.url),
-      logo: text(e?.logo),
-    })),
-    links: arr(o.links).map((e) => ({ url: text(e?.url), logo: text(e?.logo) })),
-  };
-}
-
-/**
- * Önizleme verisi (ResumePreviewData): boş bölümler atlanır, başlıklar locale sözlüğünden.
- * @param {any} content @param {string} [locale]
- */
-function buildPreview(content, locale) {
-  const d = dict(locale);
-  const c = normalizeDraft(content);
-  /** @type {{ heading: string, items: { title?: string, meta?: string, body?: string }[] }[]} */
-  const sections = [];
-  /** @param {string} heading @param {{ title?: string, meta?: string, body?: string }[]} items */
-  const add = (heading, items) => {
-    const kept = items
-      .map((i) => Object.fromEntries(Object.entries(i).filter(([, v]) => str(v))))
-      .filter((i) => Object.keys(i).length);
-    if (kept.length) sections.push({ heading, items: kept });
-  };
-  add(d.summary, [{ body: str(c.summary) }]);
-  add(d.experience, c.experiences.map((e) => ({
-    title: str(e.position),
-    meta: join([e.company, join([e.start_date, e.currently_working ? d.present : e.end_date], ' - ')]),
-    body: str(e.description),
-  })));
-  add(d.education, c.educations.map((e) => ({
-    title: join([e.degree, e.field_of_study], ', '),
-    meta: join([e.school, e.period]),
-    body: str(e.description),
-  })));
-  add(d.skills, [{ meta: join(c.skills) }]);
-  add(d.certificates, c.certificates.map((e) => ({ title: str(e.name), meta: str(e.issuer) })));
-  add(d.links, c.links.map((e) => ({ meta: str(e.url) })));
-  return {
-    name: str(c.full_name),
-    title: str(content?.subtitle) || str(c.experiences[0]?.position),
-    contact: join([c.email, c.phone, c.location]),
-    sections,
-  };
-}
-
-/** Yapay zekâ girdisi için düz metin (boş alanlar atlanır) */
-function contentToText(content) {
-  const c = normalizeDraft(content);
-  const lines = [
-    str(c.full_name),
-    join([c.email, c.phone, c.location]),
-    str(c.summary) && `Summary: ${str(c.summary)}`,
-  ];
-  for (const e of c.experiences) {
-    lines.push(join([`Experience: ${str(e.position)}`, e.company, join([e.start_date, e.currently_working ? 'Present' : e.end_date], ' - '), e.description]));
-  }
-  for (const e of c.educations) lines.push(join([`Education: ${join([e.degree, e.field_of_study], ', ')}`, e.school, e.period, e.description]));
-  if (c.skills.length) lines.push(`Skills: ${c.skills.join(', ')}`);
-  for (const e of c.certificates) lines.push(join([`Certificate: ${str(e.name)}`, e.issuer, e.description]));
-  for (const e of c.links) lines.push(`Link: ${str(e.url)}`);
-  return lines.filter(Boolean).join('\n');
-}
 
 /**
  * CV'ler: kullanıcının CV'leri + diğer modüllere okuma / yazma servisi (deps.cvs).
@@ -162,7 +31,7 @@ function createService(deps) {
   const toSummary = (row, locale) => ({
     id: row.id,
     title: row.title,
-    subtitle: row.subtitle,
+    subtitle: str(row.subtitle) || str(row.exp_position) || str(row.headline) || '',
     updated_text: updatedText(row.updated_at, locale),
     score: row.score == null ? null : Number(row.score),
     is_tailored: Boolean(row.is_tailored),
@@ -180,6 +49,7 @@ function createService(deps) {
 
   /** @param {any} user @param {import('../../config/db').Executor} [conn] */
   async function assertCanAddCv(user, conn) {
+    if (deps.config.DEV_UNLIMITED) return;
     if (await deps.entitlements.isActive(user.id, PREMIUM)) return;
     if ((await repo.countSaved(user.id, conn)) >= FREE_LIMIT) {
       throw forbidden('Ücretsiz planda en fazla 3 CV kaydedebilirsin', 'CV_LIMIT_REACHED');
@@ -193,6 +63,9 @@ function createService(deps) {
     buildPreview,
     contentToText,
     normalizeDraft,
+    enrichContentIdentity,
+    structureExperienceEntry,
+    guessPersonName,
 
     /**
      * @param {any} user
@@ -241,7 +114,45 @@ function createService(deps) {
     /** @param {any} user @param {string} id */
     async detail(user, id) {
       const row = await getOwned(user, id);
-      return { ...toSummary(row, user.locale), preview: buildPreview({ ...row.content, subtitle: row.subtitle }, user.locale) };
+      const src = row.content?.source_file;
+      let language = typeof row.language === 'string' && row.language.trim()
+        ? row.language.trim().toLowerCase().slice(0, 10)
+        : null;
+      if (!language) {
+        language = detectLanguage(contentToText(row.content));
+        if (language) await repo.setLanguageIfEmpty(user.id, row.id, language).catch(() => {});
+      }
+      return {
+        ...toSummary(row, user.locale),
+        language,
+        preview: buildPreview({
+          ...row.content,
+          subtitle: row.subtitle,
+          cv_title: row.title,
+          _fallback_name: user.display_name,
+          _fallback_email: user.email,
+          _fallback_phone: user.phone,
+        }, user.locale),
+        source_file: src?.key
+          ? { name: String(src.name || 'cv.pdf'), mime: String(src.mime || 'application/pdf') }
+          : null,
+      };
+    },
+
+    /**
+     * Orijinal yüklenen dosya (PDF/DOCX baytları).
+     * @param {any} user @param {string} id
+     */
+    async sourceFile(user, id) {
+      const row = await getOwned(user, id);
+      const src = row.content?.source_file;
+      if (!src?.key) throw notFound('Orijinal dosya yok', 'CV_SOURCE_NOT_FOUND');
+      const body = await deps.storage.read(String(src.key));
+      return {
+        body,
+        mime: String(src.mime || 'application/octet-stream'),
+        name: String(src.name || 'cv.pdf'),
+      };
     },
 
     /** @param {any} user @param {string} id */
@@ -254,7 +165,8 @@ function createService(deps) {
         subtitle: src.subtitle,
         template_id: src.template_id,
         content: src.content,
-        score: src.score,
+        // Skor analize özel; kopya Analizler sekmesinde ekstra satır olmasın.
+        score: null,
         is_tailored: Boolean(src.is_tailored),
         language: src.language,
         source_cv_id: src.id,
@@ -265,8 +177,76 @@ function createService(deps) {
 
     /** @param {any} user @param {string} id */
     async remove(user, id) {
+      const row = await repo.find(user.id, id, ['saved', 'draft']);
+      if (!row) throw notFound('CV bulunamadı', 'CV_NOT_FOUND');
+      const key = row.content?.source_file?.key;
       if (!(await repo.remove(user.id, id))) throw notFound('CV bulunamadı', 'CV_NOT_FOUND');
+      if (key) await deps.storage.remove(String(key)).catch(() => {});
       return { id };
+    },
+
+    /**
+     * PDF/DOCX → kayıtlı CV + orijinal dosya saklanır (görüntüleme için).
+     * @param {any} user @param {{ file: string, file_name?: string | null }} body
+     */
+    async importFromFile(user, body) {
+      await assertCanAddCv(user);
+      const { extractFileText, DATA_URL } = require('../analyses/file_text');
+      const match = DATA_URL.exec(body.file);
+      if (!match) throw new AppError(422, 'FILE_TYPE_UNSUPPORTED', 'Yalnızca PDF veya DOCX yükleyebilirsin');
+      const mime = match[1].toLowerCase();
+      const buf = Buffer.from(match[2], 'base64');
+
+      const text = await extractFileText(body.file);
+      if (!text) throw new AppError(422, 'SOURCE_EMPTY', 'Dosyadan metin çıkarılamadı');
+
+      const rawName = typeof body.file_name === 'string' ? body.file_name.trim() : '';
+      const base = rawName.replace(/\.[^.]+$/, '').trim() || 'CV';
+      const title = base.slice(0, 120);
+      const fileName = (rawName || `cv.${mime.includes('pdf') ? 'pdf' : 'docx'}`).slice(0, 255);
+
+      const parsed = parseImportedCvText(text, title);
+
+      const content = {
+        full_name: parsed.full_name,
+        summary: parsed.summary,
+        email: parsed.email,
+        phone: parsed.phone,
+        location: parsed.location,
+        experiences: parsed.experiences,
+        educations: parsed.educations,
+        skills: parsed.skills,
+        certificates: [],
+        links: [],
+      };
+      const headline = parsed.headline;
+      const row = await repo.create(user.id, {
+        title,
+        subtitle: headline,
+        template_id: 'modern',
+        content,
+        score: null,
+        is_tailored: false,
+        language: detectLanguage(text),
+        source_cv_id: null,
+        status: 'saved',
+      });
+
+      const ext = mime.includes('pdf') ? 'pdf' : mime.includes('wordprocessingml') ? 'docx' : 'doc';
+      const storageKey = `cvs/${user.id}/${row.id}.${ext}`;
+      try {
+        await deps.storage.put(storageKey, buf, mime);
+        const withFile = {
+          ...content,
+          source_file: { key: storageKey, name: fileName, mime },
+        };
+        await repo.updateContent(user.id, row.id, withFile, null);
+        return toSummary(await getOwned(user, row.id), user.locale);
+      } catch (err) {
+        await deps.storage.remove(storageKey).catch(() => {});
+        await repo.remove(user.id, row.id).catch(() => {});
+        throw err;
+      }
     },
 
     /** @param {any} user @param {{ id?: string | null, title?: string | null, subtitle?: string | null }} body */
@@ -301,4 +281,15 @@ function createService(deps) {
   };
 }
 
-module.exports = { createService, FREE_LIMIT, buildPreview, normalizeDraft, updatedText };
+module.exports = {
+  createService,
+  FREE_LIMIT,
+  buildPreview,
+  normalizeDraft,
+  updatedText,
+  detectLanguage,
+  parseImportedCvText,
+  guessPersonName,
+  structureExperienceEntry,
+  enrichContentIdentity,
+};

@@ -12,7 +12,11 @@ function createCvsRepository(db) {
     list(userId, limit) {
       return db.query(
         // liste hücresi: içerik (JSON) çekilmez — detay ucu tam kaydı ayrı okur
-        "SELECT id, title, subtitle, updated_at, score, is_tailored FROM cvs WHERE user_id = ? AND status = 'saved' ORDER BY updated_at DESC, id DESC LIMIT ?",
+        `SELECT id, title, subtitle, updated_at, score, is_tailored,
+          JSON_UNQUOTE(JSON_EXTRACT(content, '$.experiences[0].position')) AS exp_position,
+          JSON_UNQUOTE(JSON_EXTRACT(content, '$.headline')) AS headline
+         FROM cvs WHERE user_id = ? AND status = 'saved'
+         ORDER BY updated_at DESC, id DESC LIMIT ?`,
         [userId, limit],
       );
     },
@@ -39,11 +43,19 @@ function createCvsRepository(db) {
 
     /** @param {string} userId */
     async counts(userId) {
+      // analyses = Analizler sekmesiyle aynı: skoru olan kayıtlı CV sayısı
       const r = await db.one(
-        "SELECT COUNT(*) AS total, COALESCE(SUM(is_tailored), 0) AS tailored FROM cvs WHERE user_id = ? AND status = 'saved'",
+        `SELECT COUNT(*) AS total,
+                COALESCE(SUM(is_tailored), 0) AS tailored,
+                COALESCE(SUM(score IS NOT NULL), 0) AS analyzed
+         FROM cvs WHERE user_id = ? AND status = 'saved'`,
         [userId],
       );
-      return { total: Number(r?.total ?? 0), tailored: Number(r?.tailored ?? 0) };
+      return {
+        total: Number(r?.total ?? 0),
+        tailored: Number(r?.tailored ?? 0),
+        analyzed: Number(r?.analyzed ?? 0),
+      };
     },
 
     /**
@@ -77,6 +89,14 @@ function createCvsRepository(db) {
     /** @param {string} id @param {number | null} score @param {import('../../config/db').Executor} [conn] */
     setScore(id, score, conn) {
       return db.run('UPDATE cvs SET score = ? WHERE id = ?', [score, id], conn);
+    },
+
+    /** Dil boşsa doldur @param {string} userId @param {string} cvId @param {string} language */
+    setLanguageIfEmpty(userId, cvId, language) {
+      return db.run(
+        'UPDATE cvs SET language = ? WHERE id = ? AND user_id = ? AND language IS NULL',
+        [language, cvId, userId],
+      );
     },
 
     /**

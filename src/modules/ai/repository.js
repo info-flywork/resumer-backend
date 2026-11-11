@@ -61,10 +61,25 @@ function createAiRepository(db) {
          FROM ai_portraits`);
     },
 
-    /** Giriş sağlayıcısının fotoğrafı (user_profiles okunmaz) @param {string} userId */
+    /**
+     * Portre kaynağı: profilde yüklenen avatar, yoksa giriş sağlayıcısının fotoğrafı.
+     * profile modülü kurulu değilse (user_profiles yok) yalnızca users okunur.
+     * @param {string} userId
+     */
     async userPhotoUrl(userId) {
-      const r = await db.one('SELECT photo_url FROM users WHERE id = ?', [userId]);
-      return r?.photo_url ? String(r.photo_url) : null;
+      try {
+        const r = await db.one(
+          `SELECT COALESCE(NULLIF(p.avatar_url, ''), u.photo_url) AS photo_url
+             FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id
+            WHERE u.id = ?`,
+          [userId],
+        );
+        return r?.photo_url ? String(r.photo_url) : null;
+      } catch (err) {
+        if (/** @type {any} */ (err)?.code !== 'ER_NO_SUCH_TABLE') throw err;
+        const r = await db.one('SELECT photo_url FROM users WHERE id = ?', [userId]);
+        return r?.photo_url ? String(r.photo_url) : null;
+      }
     },
   };
 }

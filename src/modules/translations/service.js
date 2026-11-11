@@ -43,6 +43,11 @@ const OUTPUT_SCHEMA = obj({
       }),
     },
     links: { type: 'array', items: obj({ url: nullableString, logo: nullableString }) },
+    languages: { type: 'array', items: obj({ name: nullableString, level: nullableString }) },
+    references: {
+      type: 'array',
+      items: obj({ name: nullableString, position: nullableString, company: nullableString, email: nullableString, phone: nullableString }),
+    },
   }),
 });
 
@@ -93,7 +98,7 @@ const isStr = (v) => v === null || typeof v === 'string';
 function mergeTranslated(out, src) {
   const c = out?.content;
   if (!c || typeof c !== 'object') throw failed();
-  const lists = ['keywords', 'experiences', 'educations', 'skills', 'certificates', 'links'];
+  const lists = ['keywords', 'experiences', 'educations', 'skills', 'certificates', 'links', 'languages', 'references'];
   if (!lists.every((k) => Array.isArray(c[k]) && c[k].length === src[k].length)) throw failed();
   const strOk = (/** @type {any} */ o, /** @type {string[]} */ keys) => o && typeof o === 'object' && keys.every((k) => isStr(o[k]));
   if (!strOk(c, ['location', 'summary']) || !isStr(out.subtitle)) throw failed();
@@ -101,6 +106,8 @@ function mergeTranslated(out, src) {
   if (!c.experiences.every((e) => strOk(e, ['position', 'location', 'description', 'start_date', 'end_date']))) throw failed();
   if (!c.educations.every((e) => strOk(e, ['degree', 'field_of_study', 'period', 'description']))) throw failed();
   if (!c.certificates.every((e) => strOk(e, ['name', 'description', 'issue_date', 'expiry_date']))) throw failed();
+  if (!c.languages.every((e) => strOk(e, ['name', 'level']))) throw failed();
+  if (!c.references.every((e) => strOk(e, ['position']))) throw failed();
 
   return {
     ...src,
@@ -130,6 +137,9 @@ function mergeTranslated(out, src) {
       issue_date: c.certificates[i].issue_date,
       expiry_date: c.certificates[i].expiry_date,
     })),
+    // Dil adı / seviyesi çevrilir; referansta yalnız pozisyon (ad, şirket, iletişim kalır)
+    languages: src.languages.map((s, i) => ({ ...s, name: c.languages[i].name, level: c.languages[i].level })),
+    references: src.references.map((s, i) => ({ ...s, position: c.references[i].position })),
   };
 }
 
@@ -175,17 +185,20 @@ function createService(deps) {
       }
 
       try {
+        // Çevrilen CV doğrudan Listeme kaydedilir (draft değil).
+        await deps.cvs.assertCanAddCv(user);
         const suffix = ` (${localName(body.target_language, user.locale)})`;
         const row = await deps.cvs.create(user, {
           title: src.title.slice(0, 120 - suffix.length) + suffix,
           subtitle,
           template_id: src.template_id,
           content: merged,
-          score: src.score,
+          // Çevrilen CV yeni kayıt; analiz skoru taşınmaz.
+          score: null,
           is_tailored: Boolean(src.is_tailored),
           language: body.target_language,
           source_cv_id: src.id,
-          status: 'draft',
+          status: 'saved',
         });
         if (!src.language && detected) await repo.setLanguageIfEmpty(user.id, src.id, detected);
         return {

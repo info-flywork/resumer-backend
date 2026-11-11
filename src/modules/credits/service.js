@@ -70,7 +70,8 @@ function createService(deps) {
      * Kredi harcar; yetmezse 403 INSUFFICIENT_CREDITS. Kalan bakiyeyi döner.
      * @param {{ id: string }} user @param {number} amount @param {string} reason @param {string | null} refId
      */
-    consume(user, amount, reason, refId) {
+    async consume(user, amount, reason, refId) {
+      if (deps.config.DEV_UNLIMITED) return getBalance(user);
       return db.tx(async (conn) => {
         const w = await ensureWallet(user.id, conn);
         if (Number(w.credits) < amount) throw forbidden('Yeterli AI kredin yok', 'INSUFFICIENT_CREDITS');

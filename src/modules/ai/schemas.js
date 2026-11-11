@@ -17,6 +17,17 @@ const PortraitBody = z
   })
   .strict();
 
+// POST /cv-builder/photo — sihirbazda seçilen CV fotoğrafı (cihazdaki dosya yolu başka cihazda / PDF'te açılmaz)
+const CvPhotoBody = z
+  .object({
+    photo: z
+      .string()
+      .regex(DATA_URL, 'Fotoğraf jpeg, png veya webp data URL olmalı')
+      .refine((v) => Buffer.byteLength(v.slice(v.indexOf(',') + 1), 'base64') <= MAX_PHOTO_BYTES, 'Fotoğraf en çok 700 KB olabilir'),
+  })
+  .strict();
+const CvPhotoResult = z.object({ url: z.string() });
+
 // POST /ai/summary
 const SummaryBody = z
   .object({
@@ -43,6 +54,17 @@ const DescriptionBody = z
   })
   .strict();
 
+// POST /ai/experience — sihirbazdaki deneyim "Improve with AI"
+const ExperienceBody = z
+  .object({
+    position: optText(120),
+    company: optText(120),
+    description: optText(2000),
+  })
+  .strict()
+  .refine((b) => b.position || b.description, 'Pozisyon ya da açıklama gerekli');
+const ExperienceResult = z.object({ description: z.string() });
+
 const PortraitParams = z.object({ id: z.string().uuid() });
 
 // Yanıt şemaları assets/mock/ai_portrait.json ve ai_summary.json'un birebir karşılığıdır.
@@ -52,11 +74,15 @@ const DescriptionResult = z.object({ description: z.string() });
 
 module.exports = {
   PortraitBody,
+  CvPhotoBody,
+  CvPhotoResult,
   SummaryBody,
   DescriptionBody,
   PortraitParams,
   PortraitResult,
   SummaryResult,
   DescriptionResult,
+  ExperienceBody,
+  ExperienceResult,
   DATA_URL,
 };

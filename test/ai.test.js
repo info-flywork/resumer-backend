@@ -27,6 +27,11 @@ async function fakeFetch(input, init = {}) {
   if (url.startsWith('https://api.openai.com/v1/chat/completions')) {
     if (state.openai === 'fail') return new Response('{}', { status: 500 });
     const schemaName = body?.response_format?.json_schema?.name;
+    if (schemaName === 'experience_description') {
+      return Response.json({
+        choices: [{ message: { content: JSON.stringify({ description: state.openai === 'empty' ? ' ' : 'Güçlü deneyim metni.' }) } }],
+      });
+    }
     if (schemaName === 'profile_description') {
       if (state.openai === 'empty') {
         return Response.json({ choices: [{ message: { content: JSON.stringify({ description: ' ' }) } }] });
@@ -84,6 +89,8 @@ const balance = async (uid) => t.deps.credits.getBalance(await t.deps.users.find
 test('özet sözleşmeye uyar; ton büyük/küçük harf duyarsız, dil ve anahtar kelimeler isteme girer', async () => {
   state.openai = 'ok';
   seen.length = 0;
+  // Varsayılan dil artık en (231_users_locale_default_en): isteme kullanıcının dili girer
+  await t.request('PATCH', '/account', { token: 'test:sum1', body: { locale: 'tr' } });
   const r = await t.request('POST', '/ai/summary', { token: 'test:sum1', body: { tone: 'Creative', keywords: ['Figma', 'UX'] } });
   assert.equal(r.status, 200);
   assertShape(r.body.data, fixture('ai_summary.json'));
@@ -226,6 +233,18 @@ test('portre: photo_url ve users.photo_url kaynağı; özel adres reddedilir', a
   assert.equal(await balance('por3'), 1);
 });
 
+test('portre: gövde yoksa profilde yüklenen avatar, giriş fotoğrafından önce kullanılır', async () => {
+  state.openai = 'ok';
+  state.pages['https://cdn.test/avatar.png'] = () => new Response(PNG, { headers: { 'content-type': 'image/png' } });
+  await t.request('PATCH', '/me', { token: 'test:por6', body: { avatar_url: 'https://cdn.test/avatar.png' } });
+  const user = await t.deps.users.findByFirebaseUid('por6');
+  await t.deps.db.run('UPDATE users SET photo_url = ? WHERE id = ?', ['https://cdn.test/yok.png', user.id]);
+  seen.length = 0;
+  assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por6' })).status, 200);
+  assert.ok(seen.some((x) => x.url === 'https://cdn.test/avatar.png'));
+  assert.ok(!seen.some((x) => x.url === 'https://cdn.test/yok.png'));
+});
+
 test('portre: kredi yetmezse 403; OpenAI hatasında kredi iade edilir + 502', async () => {
   state.openai = 'ok';
   for (let i = 0; i < 3; i += 1) assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por4', body: { photo } })).status, 200);
@@ -271,4 +290,21 @@ test('fetchPageText: script/style atılır; yönlendirme her adımda denetlenir;
 
   state.pages['https://site.test/long'] = () => new Response('b'.repeat(30000), { headers: { 'content-type': 'text/plain' } });
   assert.equal((await t.deps.ai.fetchPageText('https://site.test/long')).length, 20000);
+});
+
+test('deneyim: açıklama iyileştirilir; bilgiler isteme girer; kimlik / doğrulama', async () => {
+  state.openai = 'ok';
+  seen.length = 0;
+  assert.equal((await t.request('POST', '/ai/experience', { body: { position: 'Designer' } })).status, 401);
+  const post = (body) => t.request('POST', '/ai/experience', { token: 'test:exp1', body });
+  assert.equal((await post({})).status, 422);
+  assert.equal((await post({ position: 'Designer', admin: 1 })).status, 422);
+  const r = await post({ position: 'Product Designer', company: 'Acme', description: 'ekranlar tasarladım' });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.data.description, 'Güçlü deneyim metni.');
+  const sent = seen.find((x) => x.url.includes('chat/completions')).body;
+  assert.match(sent.messages[1].content, /Product Designer[\s\S]*Acme[\s\S]*ekranlar tasarladım/);
+  state.openai = 'empty';
+  assert.equal((await post({ position: 'Designer' })).status, 502);
+  state.openai = 'ok';
 });

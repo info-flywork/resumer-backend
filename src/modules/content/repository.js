@@ -6,8 +6,10 @@
  */
 function createContentRepository(db) {
   return {
+    // Katalog küçük (onlarca satır); üst sınır yalnızca güvenlik payı. 50'de kalırsa yeni şablonlar
+    // eklendikçe listenin sonu sessizce kesilir.
     listTemplates() {
-      return db.query('SELECT * FROM cv_templates WHERE is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT 50');
+      return db.query('SELECT * FROM cv_templates WHERE is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT 500');
     },
 
     /** @param {string} id */

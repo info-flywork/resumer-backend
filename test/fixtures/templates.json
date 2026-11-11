@@ -1,5 +1,22 @@
 { "status": "success", "message": "ok", "data": { "items": [
-  { "id": "modern", "name": "Modern", "category": "Modern", "description": "Clean and professional", "image": "assets/images/img_template_modern.png" },
-  { "id": "classic", "name": "Classic", "category": "Professional", "description": "Timeless and structured", "image": "assets/images/img_template_modern.png" },
-  { "id": "executive", "name": "Executive", "category": "Corporate", "description": "Formal and confident", "image": "assets/images/img_template_modern.png" }
+  { "id": "modern", "name": "Modern", "category": "Modern", "description": "Clean single-column with accent bar", "image": "assets/images/img_template_modern.png" },
+  { "id": "aurora", "name": "Aurora", "category": "Modern", "description": "Two-column with accent sidebar", "image": "assets/images/img_template_aurora.png" },
+  { "id": "nexus", "name": "Nexus", "category": "Modern", "description": "Bold header band with skill chips", "image": "assets/images/img_template_nexus.png" },
+  { "id": "slate", "name": "Slate", "category": "Modern", "description": "Muted tones with thin side rail", "image": "assets/images/img_template_slate.png" },
+  { "id": "mono", "name": "Mono", "category": "Modern", "description": "Ultra-minimal black and white", "image": "assets/images/img_template_mono.png" },
+  { "id": "pulse", "name": "Pulse", "category": "Modern", "description": "Large type with accent underlines", "image": "assets/images/img_template_pulse.png" },
+  { "id": "classic", "name": "Classic", "category": "Professional", "description": "Centered timeless structure", "image": "assets/images/img_template_classic.png" },
+  { "id": "elegant", "name": "Elegant", "category": "Professional", "description": "Refined teal accent details", "image": "assets/images/img_template_elegant.png" },
+  { "id": "atlas", "name": "Atlas", "category": "Professional", "description": "Balanced equal two-column split", "image": "assets/images/img_template_atlas.png" },
+  { "id": "meridian", "name": "Meridian", "category": "Professional", "description": "Left labels with content rail", "image": "assets/images/img_template_meridian.png" },
+  { "id": "folio", "name": "Folio", "category": "Professional", "description": "Double-rule editorial layout", "image": "assets/images/img_template_folio.png" },
+  { "id": "executive", "name": "Executive", "category": "Corporate", "description": "Formal dark header banner", "image": "assets/images/img_template_executive.png" },
+  { "id": "summit", "name": "Summit", "category": "Corporate", "description": "Navy header with gold accents", "image": "assets/images/img_template_summit.png" },
+  { "id": "ledger", "name": "Ledger", "category": "Corporate", "description": "Dense rows with aligned dates", "image": "assets/images/img_template_ledger.png" },
+  { "id": "boardroom", "name": "Boardroom", "category": "Corporate", "description": "Right sidebar corporate panel", "image": "assets/images/img_template_boardroom.png" },
+  { "id": "capital", "name": "Capital", "category": "Corporate", "description": "Heavy rules, structured sections", "image": "assets/images/img_template_capital.png" },
+  { "id": "creative", "name": "Creative", "category": "Creative", "description": "Bold coral block and chips", "image": "assets/images/img_template_creative.png" },
+  { "id": "vivid", "name": "Vivid", "category": "Creative", "description": "Asymmetric purple header cards", "image": "assets/images/img_template_vivid.png" },
+  { "id": "studio", "name": "Studio", "category": "Creative", "description": "Portrait circle with bold accent", "image": "assets/images/img_template_studio.png" },
+  { "id": "prism", "name": "Prism", "category": "Creative", "description": "Magenta card grid composition", "image": "assets/images/img_template_prism.png" }
 ] } }
