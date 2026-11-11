@@ -7,9 +7,9 @@ const modules = [
   require('./ai/routes'),
   require('./analyses/routes'),
   require('./content/routes'),
-  require('./credits/routes'),
   require('./cv_builder/routes'),
   require('./cvs/routes'),
+  require('./plan/routes'),
   require('./profile/routes'),
   require('./tailor/routes'),
   require('./tasks/routes'),
@@ -21,9 +21,9 @@ function registerServices(c) {
   c.ai = require('./ai/service').createService(c);
   c.analyses = require('./analyses/service').createService(c);
   c.content = require('./content/service').createService(c);
-  c.credits = require('./credits/service').createService(c);
   c.cvBuilder = require('./cv_builder/service').createService(c);
   c.cvs = require('./cvs/service').createService(c);
+  c.plan = require('./plan/service').createService(c);
   c.profile = require('./profile/service').createService(c);
   c.tailor = require('./tailor/service').createService(c);
   c.tasks = require('./tasks/service').createService(c);
@@ -41,8 +41,8 @@ const jobs = [
 const templates = Object.assign({}, {});
 
 const products = {
-  entitlements: [...(require('./credits/products').entitlements || [])],
-  consumables: Object.assign({}, require('./credits/products').consumables || {}),
+  entitlements: [...(require('./plan/products').entitlements || [])],
+  consumables: Object.assign({}, require('./plan/products').consumables || {}),
 };
 
 /** @type {((user: any, deps: any) => Promise<void>)[]} */

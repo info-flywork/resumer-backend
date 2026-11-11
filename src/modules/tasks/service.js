@@ -7,9 +7,9 @@ const { AppError, notFound } = require('../../core/errors');
  * Uzun işler (yapay zekâ). route.js, `async` işaretli uçları burada iş türü olarak tanımlar; istemci
  * `Prefer: respond-async` gönderirse uç işi kuyruğa yazar, AYNI süreçte hemen başlatır ve 202 döner.
  *
- * İş yeniden çalıştırılmaz: yapay zekâ işleri kredi düşer (refId her çalıştırmada yeni) — süreç çökerse iş
+ * İş yeniden çalıştırılmaz: yapay zekâ işleri ücretsiz denemeyi kullanır (refId her çalıştırmada yeni) — süreç çökerse iş
  * 'failed' olur, kullanıcı tekrar dener. Başarısız iş, GET /jobs/:id'de işin KENDİ hatasıyla döner (ör. 403
- * INSUFFICIENT_CREDITS) — istemcinin hata / paywall akışı eşzamanlı uçtaki gibi çalışır.
+ * PREMIUM_REQUIRED) — istemcinin hata / paywall akışı eşzamanlı uçtaki gibi çalışır.
  *
  * @typedef {(input: any) => Promise<unknown>} TaskFn
  */
@@ -88,7 +88,7 @@ function createService(deps) {
 
     run,
 
-    /** Worker: süreç çöktüğü için takılan işler başarısız sayılır (yeniden çalıştırılmaz — kredi), eskiler silinir. */
+    /** Worker: süreç çöktüğü için takılan işler başarısız sayılır (yeniden çalıştırılmaz — deneme hakkı), eskiler silinir. */
     async cleanup() {
       const stuck = await db.run(
         `UPDATE tasks SET status = 'failed', error_status = 500, error_code = 'TASK_FAILED', error = ?

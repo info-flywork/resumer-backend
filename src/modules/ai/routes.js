@@ -19,7 +19,7 @@ module.exports = defineModule('ai', '/ai', [
   {
     method: 'post',
     path: '/portrait',
-    summary: 'AI portre üretir (1 kredi)',
+    summary: 'AI portre üretir (Pro ya da ücretsiz deneme)',
     auth: 'required',
     request: { body: PortraitBody },
     response: PortraitResult,

@@ -59,7 +59,7 @@ test('GET /me: anonim girişte email boş; users.display_name / phone / photo_ur
   assert.equal(d.avatar_url, 'https://x.test/p.png');
 });
 
-test('GET /me: sayaçlar ve kredi', async () => {
+test('GET /me: sayaçlar', async () => {
   const token = 'test:pf3';
   await t.request('GET', '/me', { token });
   const user = await t.deps.users.findByFirebaseUid('pf3');
@@ -67,7 +67,6 @@ test('GET /me: sayaçlar ve kredi', async () => {
   const d = (await t.request('GET', '/me', { token })).body.data;
   assert.equal(d.stats.cvs, 1);
   assert.equal(d.stats.tailored, 0);
-  assert.equal(typeof d.credits, 'number');
 });
 
 test('PATCH /me: alanlar yazılır, trim, boş ve null temizler, olmayan anahtar değişmez', async () => {
@@ -93,16 +92,16 @@ test('PATCH /me: alanlar yazılır, trim, boş ve null temizler, olmayan anahtar
   assert.equal((await t.request('GET', '/me', { token })).body.data.phone, '+90 555');
 });
 
-test('PATCH /me: email / is_pro / credits / stats kabul edilir ama yok sayılır', async () => {
+test('PATCH /me: email / is_pro / stats kabul edilir ama yok sayılır', async () => {
   const token = 'test:pf5:real@b.co';
   const r = await t.request('PATCH', '/me', {
     token,
-    body: { name: 'X', email: 'fake@x.co', title: '', phone: '', location: '', description: '', avatar_url: null, is_pro: true, credits: 999, stats: { cvs: 50, analyses: null, tailored: 3 } },
+    body: { name: 'X', email: 'fake@x.co', title: '', phone: '', location: '', description: '', avatar_url: null, is_pro: true, stats: { cvs: 50, analyses: null, tailored: 3 } },
   });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.data.email, 'real@b.co');
   assert.equal(r.body.data.is_pro, false);
-  assert.notEqual(r.body.data.credits, 999);
+  assert.equal('credits' in r.body.data, false);
   assert.equal(r.body.data.stats.cvs, 0);
 });
 

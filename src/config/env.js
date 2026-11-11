@@ -41,7 +41,7 @@ const schema = z.object({
 
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
 
-  /** true → CV limiti, AI kredisi, premium şablon ve rate limit yok (yerel test). */
+  /** true → CV limiti, AI deneme sınırı, premium şablon ve rate limit yok (yerel test). */
   DEV_UNLIMITED: bool.default(false),
 
   REVENUECAT_WEBHOOK_AUTH: z.string().default(''),

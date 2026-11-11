@@ -23,10 +23,9 @@ function createService(deps) {
 
   /** @param {import('../auth/repository').UserRow} user */
   async function get(user) {
-    const [p, isPro, credits, stats] = await Promise.all([
+    const [p, isPro, stats] = await Promise.all([
       repo.find(user.id),
       deps.entitlements.isActive(user.id, PRO),
-      deps.credits.getBalance(user),
       counts(user),
     ]);
     return {
@@ -38,7 +37,6 @@ function createService(deps) {
       description: p?.description ?? '',
       avatar_url: p?.avatar_url ?? user.photo_url ?? null,
       is_pro: isPro,
-      credits: Number(credits),
       stats,
     };
   }

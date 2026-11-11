@@ -3,7 +3,6 @@
 const { z } = require('zod');
 const { AppError, notFound, conflict } = require('../../core/errors');
 const { cvDict } = require('../../core/i18n');
-const { COSTS } = require('../credits/service');
 const { createTailorRepository } = require('./repository');
 
 const MAX_SKILLS = 50;
@@ -89,11 +88,11 @@ function createService(deps) {
     async analyze(user, body) {
       const cv = await deps.cvs.getOwned(user, body.cv_id, { statuses: ['saved'] });
       deps.ai.assertEnabled();
-      const jobText = await deps.ai.fetchPageText(body.job_url); // okunamazsa 422 URL_UNREADABLE, kredi düşmez
+      const jobText = await deps.ai.fetchPageText(body.job_url); // okunamazsa 422 URL_UNREADABLE, deneme hakkı harcanmaz
       const cvText = deps.cvs.contentToText({ ...cv.content, subtitle: cv.subtitle });
 
       const id = repo.newId();
-      await deps.credits.consume(user, COSTS.tailor, 'tailor', id);
+      await deps.plan.consumeAi(user, 'tailor', id);
       /** @type {z.infer<typeof AiOutput>} */
       let out;
       try {
@@ -113,7 +112,7 @@ function createService(deps) {
         if (!parsed.success || IDS.some((k) => !parsed.data.suggestions.some((s) => s.id === k))) throw aiFailed();
         out = parsed.data;
       } catch (err) {
-        await deps.credits.refund(user, COSTS.tailor, id);
+        await deps.plan.refundAi(user, id);
         throw err instanceof AppError ? err : aiFailed();
       }
 

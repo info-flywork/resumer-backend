@@ -7,7 +7,7 @@ module.exports = defineModule('translations', '/translations', [
   {
     method: 'post',
     path: '',
-    summary: "CV'yi hedef dile çevirip draft CV oluşturur (1 kredi)",
+    summary: "CV'yi hedef dile çevirip draft CV oluşturur (Pro ya da ücretsiz deneme)",
     auth: 'required',
     rateLimit: { windowMs: 3600_000, max: 20 },
     request: { body: TranslateBody },

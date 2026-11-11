@@ -3,7 +3,6 @@
 const { randomUUID } = require('node:crypto');
 const { extra } = require('../../config/env');
 const { AppError, unavailable, notFound } = require('../../core/errors');
-const { COSTS } = require('../credits/service');
 const { DATA_URL } = require('./schemas');
 const { createAiRepository } = require('./repository');
 const { createOpenAiClient } = require('./openai');
@@ -100,12 +99,12 @@ function createService(deps) {
       if (!source) throw new AppError(422, 'PHOTO_REQUIRED', 'Fotoğraf gerekli');
 
       const id = randomUUID();
-      await deps.credits.consume(user, COSTS.portrait, 'portrait', id);
+      await deps.plan.consumeAi(user, 'portrait', id);
       let png;
       try {
         png = await ai.editImage({ image: source.buffer, mime: source.mime, prompt: PORTRAIT_PROMPT });
       } catch (err) {
-        await deps.credits.refund(user, COSTS.portrait, id);
+        await deps.plan.refundAi(user, id);
         throw err;
       }
       // CDN (Bunny) varsa görsel oraya; yükleme olmazsa kullanıcı kaybetmesin — eskisi gibi veritabanına
@@ -125,7 +124,7 @@ function createService(deps) {
     },
 
     /**
-     * POST /ai/summary — kredi düşmez (rate limit korur)
+     * POST /ai/summary — deneme hakkı harcanmaz (rate limit korur)
      * @param {{ locale?: string }} user @param {{ tone: keyof typeof TONES, keywords: string[] }} body
      */
     async summary(user, body) {
@@ -145,7 +144,7 @@ function createService(deps) {
     },
 
     /**
-     * POST /ai/description — profil bio iyileştirme; kredi düşmez (rate limit korur)
+     * POST /ai/description — profil bio iyileştirme; deneme hakkı harcanmaz (rate limit korur)
      * @param {{ locale?: string }} user
      * @param {{ name: string, title: string, location: string, description: string }} body
      */
@@ -170,7 +169,7 @@ function createService(deps) {
     },
 
     /**
-     * POST /ai/experience — CV deneyim açıklamasını iyileştirir (kredi düşmez, rate limit korur)
+     * POST /ai/experience — CV deneyim açıklamasını iyileştirir (deneme hakkı harcanmaz, rate limit korur)
      * @param {{ locale?: string }} user @param {{ position: string, company: string, description: string }} body
      */
     async experience(user, body) {
@@ -193,7 +192,7 @@ function createService(deps) {
     },
 
     /**
-     * POST /cv-builder/photo — CV fotoğrafını kalıcı, herkese açık adrese taşır (AI yok, kredi yok).
+     * POST /cv-builder/photo — CV fotoğrafını kalıcı, herkese açık adrese taşır (AI yok).
      * Portrelerle aynı saklama: CDN (Bunny) varsa orada, yoksa / yükleme olmazsa veritabanında
      * (/ai/portraits/:id.png sunar). Hesap silinince portrelerle birlikte silinir.
      * @param {{ id: string }} user @param {{ photo: string }} body

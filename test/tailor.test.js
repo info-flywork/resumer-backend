@@ -85,11 +85,16 @@ async function seed(uid, over = {}) {
   return { user, row, token: `test:${uid}` };
 }
 
+/** Ücretsiz AI denemesi duruyor mu (1) / kullanıldı mı (0) */
+const trial = async (user) => ((await t.deps.plan.hasFreeTrial(user)) ? 1 : 0);
+/** @param {{ id: string }} user */
+const makePro = (user) => t.deps.db.run("INSERT INTO entitlements (user_id, entitlement, expires_at) VALUES (?, 'Resumer Pro', '2099-01-01')", [user.id]);
+
 const analyze = (token, cv_id, job_url = 'https://jobs.test/ilan') => t.request('POST', '/tailor/analyze', { token, body: { job_url, cv_id } });
 
-test('analyze sözleşmeye uyar; current alanları CV’den, 1 kredi düşer', async () => {
+test('analyze sözleşmeye uyar; current alanları CV’den, ücretsiz deneme kullanılır', async () => {
   const { user, row, token } = await seed('an1');
-  const before = await t.deps.credits.getBalance(user);
+  const before = await trial(user);
   const r = await analyze(token, row.id);
   assert.equal(r.status, 200);
   assertShape(r.body.data, fx('tailor_analysis.json'));
@@ -99,7 +104,7 @@ test('analyze sözleşmeye uyar; current alanları CV’den, 1 kredi düşer', a
   assert.deepEqual(d.suggestions.map((s) => s.id), ['summary', 'experience', 'skills']);
   assert.deepEqual(d.suggestions.map((s) => s.current), ['Eski özet.', 'Eski açıklama.', 'Figma, Sketch']);
   assert.ok(!('score_gain' in d.suggestions[0]));
-  assert.equal(await t.deps.credits.getBalance(user), before - 1);
+  assert.equal(await trial(user), before - 1);
 });
 
 test('analyze: new_score 100’de sınırlanır; boş CV bölümü current ""', async () => {
@@ -121,32 +126,32 @@ test('analyze: kimlik, doğrulama, sahiplik, okunamayan URL', async () => {
   assert.equal(stolen.status, 404);
   assert.equal(stolen.body.code, 'CV_NOT_FOUND');
   const user = await t.deps.users.findByFirebaseUid('an3');
-  const credits = await t.deps.credits.getBalance(user);
+  const left = await trial(user);
   const bad = await analyze(token, row.id, 'https://bozuk.test/x');
   assert.equal(bad.status, 422);
   assert.equal(bad.body.code, 'URL_UNREADABLE');
-  assert.equal(await t.deps.credits.getBalance(user), credits, 'kredi düşmemeli');
+  assert.equal(await trial(user), left, 'deneme harcanmamalı');
 });
 
-test('analyze: AI hatası → 502 ve kredi iadesi; bozuk çıktı da 502', async () => {
+test('analyze: AI hatası → 502 ve deneme geri gelir; bozuk çıktı da 502', async () => {
   const { user, row, token } = await seed('an4');
-  const credits = await t.deps.credits.getBalance(user);
+  const left = await trial(user);
   aiOut = new AppError(502, 'AI_FAILED', 'Yapay zekâ şu an yanıt veremedi');
   const r = await analyze(token, row.id);
   assert.equal(r.status, 502);
   assert.equal(r.body.code, 'AI_FAILED');
   aiOut = { job_title: 'x', company: '', current_score: 5, suggestions: [] };
   assert.equal((await analyze(token, row.id)).status, 502);
-  assert.equal(await t.deps.credits.getBalance(user), credits);
+  assert.equal(await trial(user), left);
 });
 
-test('analyze: kredi yoksa 403 INSUFFICIENT_CREDITS, AI çağrılmaz', async () => {
+test('analyze: deneme bittiyse 403 PREMIUM_REQUIRED, AI çağrılmaz', async () => {
   const { user, row, token } = await seed('an5');
-  await t.deps.credits.consume(user, await t.deps.credits.getBalance(user), 'test', null);
+  await t.deps.plan.consumeAi(user, 'analysis', 'pre');
   const calls = aiCalls;
   const r = await analyze(token, row.id);
   assert.equal(r.status, 403);
-  assert.equal(r.body.code, 'INSUFFICIENT_CREDITS');
+  assert.equal(r.body.code, 'PREMIUM_REQUIRED');
   assert.equal(aiCalls, calls);
 });
 
@@ -259,6 +264,7 @@ test('save: ücretsiz CV sınırında 403 CV_LIMIT_REACHED', async () => {
 
 test('iş: 7 günden eski oturumlar silinir; kaynak CV silinince oturum da gider', async () => {
   const { user, row, token } = await seed('pg1');
+  await makePro(user); // iki analiz → Pro (ücretsizde tek deneme)
   await analyze(token, row.id);
   await analyze(token, row.id);
   await t.deps.db.run('UPDATE tailor_sessions SET created_at = UTC_TIMESTAMP(3) - INTERVAL 8 DAY WHERE user_id = ? ORDER BY id LIMIT 1', [user.id]);

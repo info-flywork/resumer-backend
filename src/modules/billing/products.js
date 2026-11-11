@@ -6,7 +6,7 @@
  * ENTITLEMENTS: RevenueCat'teki entitlement kimlikleri (ör. "premium"). Route'larda
  *   `premium: true` (herhangi biri) ya da `premium: 'premium'` (belirli biri) ile kullanılır.
  *
- * CONSUMABLES: tek seferlik ürünler (coin / kredi paketi). `grant` aynı transaction içinde çalışır;
+ * CONSUMABLES: tek seferlik ürünler (ör. coin paketi). `grant` aynı transaction içinde çalışır;
  *   her mağaza işlemi için YALNIZCA BİR KEZ çağrılır. Döndürdüğü nesne purchases.granted'a yazılır.
  */
 
@@ -24,11 +24,11 @@ const ENTITLEMENTS = [...new Set(['premium', ...generated.entitlements])];
 const CONSUMABLES = {
   ...generated.consumables,
   // Uygulama ürünleri modülün products.js dosyasında. Örnek:
-  // credits_100: {
-  //   description: '100 kredi',
+  // coins_100: {
+  //   description: '100 coin',
   //   async grant(userId, conn) {
-  //     await conn.query('UPDATE user_wallets SET credits = credits + 100 WHERE user_id = ?', [userId]);
-  //     return { credits: 100 };
+  //     await conn.query('UPDATE user_coins SET coins = coins + 100 WHERE user_id = ?', [userId]);
+  //     return { coins: 100 };
   //   },
   // },
 };

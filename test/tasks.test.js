@@ -74,7 +74,8 @@ async function poll(token, id) {
   throw new Error('iş bitmedi');
 }
 
-const credits = async (token) => (await t.request('GET', '/me/plan', { token })).body.data.credits;
+/** Ücretsiz AI denemesi duruyor mu (1) / kullanıldı mı (0) */
+const trial = async (token) => ((await t.request('GET', '/me/plan', { token })).body.data.free_trial_available ? 1 : 0);
 
 test('başlıksız istek eskisi gibi bekler (eski uygulama sürümleri)', async () => {
   const { token, cv } = await userWithCv();
@@ -105,10 +106,10 @@ test('respond-async: hemen 202, iş sürerken running, bitince sonuç eşzamanl�
   assert.equal(done.body.data.progress, 100);
   assert.equal(done.body.data.result.overall_score, 70);
   assert.equal(done.body.data.result.cv_id, cv.id);
-  assert.equal(await credits(token), 2);
+  assert.equal(await trial(token), 0);
 });
 
-test('iş hatası GET /jobs/:id\'de işin kendi hatası olarak döner; kredi iade edilir', async () => {
+test('iş hatası GET /jobs/:id\'de işin kendi hatası olarak döner; deneme geri gelir', async () => {
   const { token, cv } = await userWithCv();
   state.fail = true;
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id }, headers: ASYNC });
@@ -116,16 +117,16 @@ test('iş hatası GET /jobs/:id\'de işin kendi hatası olarak döner; kredi iad
   const done = await poll(token, r.body.data.task_id);
   assert.equal(done.status, 502);
   assert.equal(done.body.code, 'AI_FAILED');
-  assert.equal(await credits(token), 3);
+  assert.equal(await trial(token), 1);
 });
 
-test('kredi yetmezse 403 INSUFFICIENT_CREDITS (istemci paywall açar)', async () => {
+test('deneme bittiyse 403 PREMIUM_REQUIRED (istemci paywall açar)', async () => {
   const { token, user, cv } = await userWithCv();
-  await t.deps.db.run('UPDATE user_wallets SET credits = 0 WHERE user_id = ?', [user.id]);
+  await t.deps.plan.consumeAi(user, 'analysis', 'pre');
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id }, headers: ASYNC });
   const done = await poll(token, r.body.data.task_id);
   assert.equal(done.status, 403);
-  assert.equal(done.body.code, 'INSUFFICIENT_CREDITS');
+  assert.equal(done.body.code, 'PREMIUM_REQUIRED');
 });
 
 test('girdi doğrulaması kuyruktan önce: 422, iş oluşmaz', async () => {

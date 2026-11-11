@@ -2,7 +2,6 @@
 
 const { randomUUID } = require('node:crypto');
 const { AppError, conflict, notFound } = require('../../core/errors');
-const { COSTS } = require('../credits/service');
 const { createAnalysesRepository } = require('./repository');
 const { AiAnalysis, AI_ANALYSIS_JSON, FIX_SECTION, FIX_JSON } = require('./schemas');
 
@@ -189,7 +188,7 @@ function createService(deps) {
       if (!src.text.trim()) throw new AppError(422, 'SOURCE_EMPTY', 'Analiz edilecek içerik bulunamadı');
 
       const id = randomUUID();
-      await deps.credits.consume(user, COSTS.analysis, 'analysis', id);
+      await deps.plan.consumeAi(user, 'analysis', id);
       try {
         const out = await deps.ai.json({
           system:
@@ -234,13 +233,13 @@ function createService(deps) {
           ats,
         };
       } catch (err) {
-        await deps.credits.refund(user, COSTS.analysis, id);
+        await deps.plan.refundAi(user, id);
         throw err;
       }
     },
 
     /**
-     * POST /analyses/fix — kredi düşmez
+     * POST /analyses/fix — deneme hakkı harcanmaz
      * @param {any} user @param {string} recommendationId
      */
     async fix(user, recommendationId) {

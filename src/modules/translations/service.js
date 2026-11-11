@@ -2,7 +2,6 @@
 
 const { randomUUID } = require('node:crypto');
 const { AppError } = require('../../core/errors');
-const { COSTS } = require('../credits/service');
 const { createTranslationsRepository } = require('./repository');
 
 const nullableString = { type: ['string', 'null'] };
@@ -152,7 +151,7 @@ function createService(deps) {
 
   return {
     /**
-     * POST /translations — 1 kredi; yapay zekâ hatasında iade + 502
+     * POST /translations — Pro ya da ücretsiz deneme; yapay zekâ hatasında deneme geri verilir + 502
      * @param {{ id: string, locale?: string }} user
      * @param {{ cv_id: string, target_language: string, keep_formatting: boolean, pro_terminology: boolean }} body
      */
@@ -163,7 +162,7 @@ function createService(deps) {
 
       const draft = deps.cvs.normalizeDraft({ ...src.content, template_id: src.content?.template_id ?? src.template_id });
       const refId = randomUUID();
-      await deps.credits.consume(user, COSTS.translation, 'translation', refId);
+      await deps.plan.consumeAi(user, 'translation', refId);
 
       let merged;
       let subtitle;
@@ -180,7 +179,7 @@ function createService(deps) {
         subtitle = typeof out.subtitle === 'string' ? out.subtitle : '';
         detected = typeof out.detected_source_language === 'string' ? out.detected_source_language.trim().toLowerCase().slice(0, 10) : '';
       } catch (err) {
-        await deps.credits.refund(user, COSTS.translation, refId);
+        await deps.plan.refundAi(user, refId);
         throw err instanceof AppError ? err : failed();
       }
 
@@ -209,7 +208,7 @@ function createService(deps) {
           language: body.target_language,
         };
       } catch (err) {
-        await deps.credits.refund(user, COSTS.translation, refId);
+        await deps.plan.refundAi(user, refId);
         throw err;
       }
     },

@@ -88,14 +88,15 @@ async function seed(uid, over = {}) {
   const row = await t.deps.cvs.create(user, { title: 'Main CV', subtitle: 'Designer', content, score: 80, ...over });
   return { user, row };
 }
-const balance = async (uid) => t.deps.credits.getBalance(await t.deps.users.findByFirebaseUid(uid));
+/** Ücretsiz AI denemesi duruyor mu (1) / kullanıldı mı (0) */
+const trial = async (uid) => ((await t.deps.plan.hasFreeTrial(await t.deps.users.findByFirebaseUid(uid))) ? 1 : 0);
 const post = (uid, body, token = `test:${uid}`) => t.request('POST', '/translations', { token, body });
 const valid = (cv_id, over = {}) => ({ cv_id, target_language: 'de', keep_formatting: true, pro_terminology: false, ...over });
 
-test('çeviri sözleşmeye uyar, kayıtlı CV oluşturur, 1 kredi düşer, korunan alanlar kaynaktan gelir', async () => {
+test('çeviri sözleşmeye uyar, kayıtlı CV oluşturur, ücretsiz deneme kullanılır, korunan alanlar kaynaktan gelir', async () => {
   state.mode = 'ok';
   const { row } = await seed('ok1');
-  const before = await balance('ok1');
+  const before = await trial('ok1');
   const r = await post('ok1', valid(row.id, { pro_terminology: true, keep_formatting: false }));
   assert.equal(r.status, 200);
   assertShape(r.body.data, fixture);
@@ -103,7 +104,7 @@ test('çeviri sözleşmeye uyar, kayıtlı CV oluşturur, 1 kredi düşer, korun
   assert.equal(r.body.data.subtitle, 'T:Designer');
   assert.equal(r.body.data.language, 'de');
   assert.match(r.body.data.updated_text, /^Updated /);
-  assert.equal(await balance('ok1'), before - 1);
+  assert.equal(await trial('ok1'), before - 1);
 
   const created = await t.deps.db.one('SELECT * FROM cvs WHERE id = ?', [r.body.data.cv_id]);
   assert.equal(created.status, 'saved');
@@ -141,14 +142,14 @@ test('doğrulama: bilinmeyen dil / eksik alan / fazla alan / boş cv_id → 422'
   assert.equal((await post('v1', valid(''))).status, 422);
 });
 
-test('olmayan / başkasının CV’si 404 CV_NOT_FOUND ve kredi düşmez', async () => {
+test('olmayan / başkasının CV’si 404 CV_NOT_FOUND ve deneme harcanmaz', async () => {
   const { row } = await seed('owner');
   await t.request('GET', '/cvs', { token: 'test:intruder' });
-  const before = await balance('intruder');
+  const before = await trial('intruder');
   const r = await post('intruder', valid(row.id));
   assert.equal(r.status, 404);
   assert.equal(r.body.code, 'CV_NOT_FOUND');
-  assert.equal(await balance('intruder'), before);
+  assert.equal(await trial('intruder'), before);
   assert.equal((await post('owner', valid('yok'))).status, 404);
 });
 
@@ -164,33 +165,32 @@ test('draft CV de çevrilebilir', async () => {
   assert.equal((await post('draftsrc', valid(row.id, { target_language: 'tr' }))).status, 200);
 });
 
-test('yetersiz kredi → 403 INSUFFICIENT_CREDITS', async () => {
+test('deneme bittiyse → 403 PREMIUM_REQUIRED', async () => {
   const { user, row } = await seed('broke');
-  await balance('broke'); // cüzdanı oluşturur
-  await t.deps.db.run('UPDATE user_wallets SET credits = 0 WHERE user_id = ?', [user.id]);
+  await t.deps.plan.consumeAi(user, 'analysis', 'pre');
   const r = await post('broke', valid(row.id));
   assert.equal(r.status, 403);
-  assert.equal(r.body.code, 'INSUFFICIENT_CREDITS');
+  assert.equal(r.body.code, 'PREMIUM_REQUIRED');
 });
 
-test('AI hatası → 502 AI_FAILED, kredi iade edilir, CV oluşmaz', async () => {
+test('AI hatası → 502 AI_FAILED, deneme geri gelir, CV oluşmaz', async () => {
   const { user, row } = await seed('aifail');
-  const before = await balance('aifail');
+  const before = await trial('aifail');
   for (const mode of ['fail', 'short']) {
     state.mode = mode;
     const r = await post('aifail', valid(row.id));
     assert.equal(r.status, 502);
     assert.equal(r.body.code, 'AI_FAILED');
-    assert.equal(await balance('aifail'), before);
+    assert.equal(await trial('aifail'), before);
   }
   state.mode = 'ok';
   const n = await t.deps.db.one("SELECT COUNT(*) AS n FROM cvs WHERE user_id = ? AND status = 'draft'", [user.id]);
   assert.equal(Number(n.n), 0);
 });
 
-test('anahtar yoksa 503 AI_NOT_CONFIGURED ve kredi düşmez', async () => {
+test('anahtar yoksa 503 AI_NOT_CONFIGURED ve deneme harcanmaz', async () => {
   const { row } = await seed('nokey');
-  const before = await balance('nokey');
+  const before = await trial('nokey');
   const key = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
   try {
@@ -200,5 +200,5 @@ test('anahtar yoksa 503 AI_NOT_CONFIGURED ve kredi düşmez', async () => {
   } finally {
     process.env.OPENAI_API_KEY = key;
   }
-  assert.equal(await balance('nokey'), before);
+  assert.equal(await trial('nokey'), before);
 });

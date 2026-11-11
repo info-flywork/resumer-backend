@@ -84,7 +84,7 @@ beforeEach(() => {
 async function userWithCv(content = {}) {
   seq += 1;
   const token = `test:an${seq}`;
-  await t.request('GET', '/me/plan', { token }); // kullanıcıyı oluşturur (kredi cüzdanı: 3)
+  await t.request('GET', '/me/plan', { token }); // kullanıcıyı oluşturur
   const user = await t.deps.users.findByFirebaseUid(`an${seq}`);
   const cv = await t.deps.cvs.create(user, {
     title: 'Ahmet CV',
@@ -100,9 +100,10 @@ async function userWithCv(content = {}) {
   return { token, user, cv };
 }
 
-const credits = async (token) => (await t.request('GET', '/me/plan', { token })).body.data.credits;
+/** Ücretsiz AI denemesi duruyor mu (1) / kullanıldı mı (0) */
+const trial = async (token) => ((await t.request('GET', '/me/plan', { token })).body.data.free_trial_available ? 1 : 0);
 
-test('analiz sözleşmeye uyar; kredi düşer, CV puanı güncellenir', async () => {
+test('analiz sözleşmeye uyar; ücretsiz deneme kullanılır, CV puanı güncellenir', async () => {
   const { token, cv } = await userWithCv();
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -111,7 +112,7 @@ test('analiz sözleşmeye uyar; kredi düşer, CV puanı güncellenir', async ()
   assert.equal(r.body.data.ats.score, 54);
   assert.equal(r.body.data.recommendations.length, 3);
   assert.equal('suggested_text' in r.body.data.recommendations[1], false);
-  assert.equal(await credits(token), 2);
+  assert.equal(await trial(token), 0);
   const row = await t.deps.db.one('SELECT score FROM cvs WHERE id = ?', [cv.id]);
   assert.equal(Number(row.score), 70);
   assert.equal(await t.deps.analyses.countByUser(cv.user_id ?? (await t.deps.users.findByFirebaseUid(`an${seq}`)).id), 1);
@@ -170,34 +171,34 @@ test('kaynak kuralları: yok → SOURCE_REQUIRED, yalnız dosya adı → FILE_UP
   assert.equal(url.body.code, 'URL_UNREADABLE');
 });
 
-test('sahiplik: başkasının CV’si → 404 CV_NOT_FOUND, kredi düşmez', async () => {
+test('sahiplik: başkasının CV’si → 404 CV_NOT_FOUND, deneme harcanmaz', async () => {
   const owner = await userWithCv();
   const { token } = await userWithCv();
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: owner.cv.id } });
   assert.equal(r.status, 404);
   assert.equal(r.body.code, 'CV_NOT_FOUND');
-  assert.equal(await credits(token), 3);
+  assert.equal(await trial(token), 1);
 });
 
-test('kredi yoksa 403 INSUFFICIENT_CREDITS', async () => {
+test('deneme bittiyse 403 PREMIUM_REQUIRED', async () => {
   const { token, cv } = await userWithCv();
-  for (let i = 0; i < 3; i += 1) assert.equal((await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } })).status, 200);
+  assert.equal((await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } })).status, 200);
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } });
   assert.equal(r.status, 403);
-  assert.equal(r.body.code, 'INSUFFICIENT_CREDITS');
+  assert.equal(r.body.code, 'PREMIUM_REQUIRED');
 });
 
-test('yapay zekâ hatası ya da geçersiz çıktı → 502 ve kredi iade edilir', async () => {
+test('yapay zekâ hatası ya da geçersiz çıktı → 502 ve deneme geri gelir', async () => {
   const { token, cv } = await userWithCv();
   state.fail = true;
   assert.equal((await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } })).status, 502);
-  assert.equal(await credits(token), 3);
+  assert.equal(await trial(token), 1);
   state.fail = false;
   state.bad = true;
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } });
   assert.equal(r.status, 502);
   assert.equal(r.body.code, 'AI_FAILED');
-  assert.equal(await credits(token), 3);
+  assert.equal(await trial(token), 1);
 });
 
 test('anahtar yoksa 503 AI_NOT_CONFIGURED', async () => {
@@ -221,17 +222,17 @@ async function analyzed(cv, token, target) {
   return rec.id;
 }
 
-test('fix: özet bölümü güncellenir, kredi düşmez, ikinci kez 409 ALREADY_APPLIED', async () => {
+test('fix: özet bölümü güncellenir, deneme harcanmaz, ikinci kez 409 ALREADY_APPLIED', async () => {
   const { token, cv } = await userWithCv();
   const recId = await analyzed(cv, token, 'summary');
-  const before = await credits(token);
+  const before = await trial(token);
   state.fix = { summary: 'Yeni özet' };
   const r = await t.request('POST', '/analyses/fix', { token, body: { recommendation_id: recId } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assertShape(r.body.data, fixture('recommendation_fix.json'));
   assert.equal(r.body.data.applied, true);
   assert.equal(r.body.data.suggested_text, 'Yeni özet');
-  assert.equal(await credits(token), before);
+  assert.equal(await trial(token), before);
   const row = await t.deps.db.one('SELECT content FROM cvs WHERE id = ?', [cv.id]);
   assert.equal(row.content.summary, 'Yeni özet');
   assert.equal(row.content.full_name, 'Ahmet Yılmaz');

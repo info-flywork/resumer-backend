@@ -8,7 +8,7 @@ module.exports = defineModule('profile', '', [
   {
     method: 'get',
     path: '/me',
-    summary: 'Profil (kredi, premium ve sayaçlarla)',
+    summary: 'Profil (premium ve sayaçlarla)',
     auth: 'required',
     response: Profile,
     handler: ({ user, deps }) => deps.profile.get(/** @type {any} */ (user)),

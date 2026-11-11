@@ -1032,7 +1032,7 @@
         "tags": [
           "ai"
         ],
-        "summary": "AI portre üretir (1 kredi)",
+        "summary": "AI portre üretir (Pro ya da ücretsiz deneme)",
         "operationId": "post_ai_portrait",
         "security": [
           {
@@ -1872,7 +1872,7 @@
         "tags": [
           "analyses"
         ],
-        "summary": "CV ya da LinkedIn analizi (1 kredi)",
+        "summary": "CV ya da LinkedIn analizi (Pro ya da ücretsiz deneme)",
         "operationId": "post_analyses",
         "security": [
           {
@@ -2524,121 +2524,6 @@
         }
       }
     },
-    "/me/plan": {
-      "get": {
-        "tags": [
-          "credits"
-        ],
-        "summary": "Abonelik planı özeti ve AI kredi bakiyesi",
-        "operationId": "get_me_plan",
-        "security": [
-          {
-            "firebase": []
-          }
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Başarılı",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "status",
-                    "message",
-                    "data"
-                  ],
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "success"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string"
-                        },
-                        "credits": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "renews_on": {
-                          "type": "string"
-                        },
-                        "is_active": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "name",
-                        "credits",
-                        "renews_on",
-                        "is_active"
-                      ],
-                      "additionalProperties": false
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Hata",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "status",
-                    "message",
-                    "code"
-                  ],
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "error"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "data": {
-                      "nullable": true
-                    },
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "field": {
-                            "type": "string"
-                          },
-                          "message": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/cvs/score": {
       "post": {
         "tags": [
@@ -3089,7 +2974,7 @@
         "tags": [
           "cv_builder"
         ],
-        "summary": "CV fotoğrafını yükler, CV'ye yazılacak herkese açık adresi döner (kredi yok)",
+        "summary": "CV fotoğrafını yükler, CV'ye yazılacak herkese açık adresi döner",
         "operationId": "post_cv_builder_photo",
         "security": [
           {
@@ -5163,12 +5048,125 @@
         }
       }
     },
+    "/me/plan": {
+      "get": {
+        "tags": [
+          "plan"
+        ],
+        "summary": "Abonelik planı özeti ve ücretsiz AI denemesi durumu",
+        "operationId": "get_me_plan",
+        "security": [
+          {
+            "firebase": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "renews_on": {
+                          "type": "string"
+                        },
+                        "is_active": {
+                          "type": "boolean"
+                        },
+                        "free_trial_available": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "renews_on",
+                        "is_active",
+                        "free_trial_available"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Hata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "code"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me": {
       "get": {
         "tags": [
           "profile"
         ],
-        "summary": "Profil (kredi, premium ve sayaçlarla)",
+        "summary": "Profil (premium ve sayaçlarla)",
         "operationId": "get_me",
         "security": [
           {
@@ -5226,11 +5224,6 @@
                         "is_pro": {
                           "type": "boolean"
                         },
-                        "credits": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "stats": {
                           "type": "object",
                           "properties": {
@@ -5267,7 +5260,6 @@
                         "description",
                         "avatar_url",
                         "is_pro",
-                        "credits",
                         "stats"
                       ],
                       "additionalProperties": false
@@ -5387,11 +5379,6 @@
                         "is_pro": {
                           "type": "boolean"
                         },
-                        "credits": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
                         "stats": {
                           "type": "object",
                           "properties": {
@@ -5428,7 +5415,6 @@
                         "description",
                         "avatar_url",
                         "is_pro",
-                        "credits",
                         "stats"
                       ],
                       "additionalProperties": false
@@ -5530,10 +5516,6 @@
                   "is_pro": {
                     "nullable": true,
                     "type": "boolean"
-                  },
-                  "credits": {
-                    "nullable": true,
-                    "type": "number"
                   },
                   "stats": {
                     "nullable": true,
@@ -5778,7 +5760,7 @@
         "tags": [
           "tailor"
         ],
-        "summary": "CV'yi iş ilanına göre analiz eder, 3 öneri üretir (1 kredi)",
+        "summary": "CV'yi iş ilanına göre analiz eder, 3 öneri üretir (Pro ya da ücretsiz deneme)",
         "operationId": "post_tailor_analyze",
         "security": [
           {
@@ -5951,7 +5933,7 @@
         "tags": [
           "tailor"
         ],
-        "summary": "Seçilen önerileri uygular, önizleme döner (kredi yok)",
+        "summary": "Seçilen önerileri uygular, önizleme döner",
         "operationId": "post_tailor_apply",
         "security": [
           {
@@ -6456,7 +6438,7 @@
         "tags": [
           "translations"
         ],
-        "summary": "CV'yi hedef dile çevirip draft CV oluşturur (1 kredi)",
+        "summary": "CV'yi hedef dile çevirip draft CV oluşturur (Pro ya da ücretsiz deneme)",
         "operationId": "post_translations",
         "security": [
           {

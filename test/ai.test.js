@@ -84,7 +84,10 @@ function assertShape(actual, mock, where = 'data') {
   if (actual !== null) assert.equal(typeof actual, typeof mock, `${where} tipi`);
 }
 const fixture = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8')).data;
-const balance = async (uid) => t.deps.credits.getBalance(await t.deps.users.findByFirebaseUid(uid));
+/** Ücretsiz AI denemesi duruyor mu (1) / kullanıldı mı (0) */
+const trial = async (uid) => ((await t.deps.plan.hasFreeTrial(await t.deps.users.findByFirebaseUid(uid))) ? 1 : 0);
+const makePro = async (uid) =>
+  t.deps.db.run("INSERT INTO entitlements (user_id, entitlement, expires_at) VALUES (?, 'Resumer Pro', '2099-01-01')", [(await t.deps.users.findByFirebaseUid(uid)).id]);
 
 test('özet sözleşmeye uyar; ton büyük/küçük harf duyarsız, dil ve anahtar kelimeler isteme girer', async () => {
   state.openai = 'ok';
@@ -100,7 +103,7 @@ test('özet sözleşmeye uyar; ton büyük/küçük harf duyarsız, dil ve anaht
   assert.equal(sent.response_format.type, 'json_schema');
   assert.match(sent.messages[0].content, /Turkish/);
   assert.match(sent.messages[1].content, /Figma, UX/);
-  assert.equal(await balance('sum1'), 3); // kredi düşmez
+  assert.equal(await trial('sum1'), 1); // deneme hakkı harcanmaz
 });
 
 test('özet: kimlik gerekli; doğrulama 422', async () => {
@@ -129,7 +132,7 @@ test('özet: OpenAI hatası 502 AI_FAILED, uzun metin 600 karaktere kırpılır'
   state.summary = 'Kısa özet.';
 });
 
-test('profil açıklaması sözleşmeye uyar; alanlar isteme girer, kredi düşmez', async () => {
+test('profil açıklaması sözleşmeye uyar; alanlar isteme girer, deneme harcanmaz', async () => {
   state.openai = 'ok';
   state.description = 'Kısa profil bio.';
   seen.length = 0;
@@ -145,7 +148,7 @@ test('profil açıklaması sözleşmeye uyar; alanlar isteme girer, kredi düşm
   assert.match(sent.messages[1].content, /Ada/);
   assert.match(sent.messages[1].content, /Designer/);
   assert.match(sent.messages[1].content, /eski metin/);
-  assert.equal(await balance('desc1'), 3);
+  assert.equal(await trial('desc1'), 1);
 });
 
 test('profil açıklaması: kimlik gerekli; uzun metin 250 karaktere kırpılır; boş gövde kabul', async () => {
@@ -184,13 +187,13 @@ test('anahtar yoksa 503 AI_NOT_CONFIGURED', async () => {
 
 const photo = `data:image/png;base64,${PNG.toString('base64')}`;
 
-test('portre sözleşmeye uyar, 1 kredi düşer, görsel herkese açık adresten sunulur', async () => {
+test('portre sözleşmeye uyar, ücretsiz denemeyi kullanır, görsel herkese açık adresten sunulur', async () => {
   state.openai = 'ok';
   const r = await t.request('POST', '/ai/portrait', { token: 'test:por1', body: { photo } });
   assert.equal(r.status, 200);
   assertShape(r.body.data, fixture('ai_portrait.json'));
   assert.match(r.body.data.image, /^https:\/\/resumer\.fly-work\.com\/ai\/portraits\/[0-9a-f-]{36}\.png$/);
-  assert.equal(await balance('por1'), 2);
+  assert.equal(await trial('por1'), 0);
   const img = await fetch(`${t.base}${new URL(r.body.data.image).pathname}`);
   assert.equal(img.status, 200);
   assert.equal(img.headers.get('content-type'), 'image/png');
@@ -201,12 +204,12 @@ test('portre sözleşmeye uyar, 1 kredi düşer, görsel herkese açık adresten
   assert.equal(edit.get('size'), '1024x1024');
 });
 
-test('portre: kimlik gerekli; fotoğraf yoksa 422 PHOTO_REQUIRED (kredi düşmez); bozuk girdi 422', async () => {
+test('portre: kimlik gerekli; fotoğraf yoksa 422 PHOTO_REQUIRED (deneme harcanmaz); bozuk girdi 422', async () => {
   assert.equal((await t.request('POST', '/ai/portrait', { body: {} })).status, 401);
   const none = await t.request('POST', '/ai/portrait', { token: 'test:por2' });
   assert.equal(none.status, 422);
   assert.equal(none.body.code, 'PHOTO_REQUIRED');
-  assert.equal(await balance('por2'), 3);
+  assert.equal(await trial('por2'), 1);
   const post = (body) => t.request('POST', '/ai/portrait', { token: 'test:por2', body });
   assert.equal((await post({ photo: 'merhaba' })).status, 422);
   assert.equal((await post({ photo: `data:image/gif;base64,${PNG.toString('base64')}` })).status, 422);
@@ -225,12 +228,13 @@ test('portre: photo_url ve users.photo_url kaynağı; özel adres reddedilir', a
   assert.equal(blocked.status, 422);
   assert.equal(blocked.body.code, 'URL_UNREADABLE');
   assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por3', body: { photo_url: 'http://127.0.0.1/x.png' } })).status, 422);
-  assert.equal(await balance('por3'), 2);
+  assert.equal(await trial('por3'), 0);
+  await makePro('por3');
 
   const user = await t.deps.users.findByFirebaseUid('por3');
   await t.deps.db.run('UPDATE users SET photo_url = ? WHERE id = ?', ['https://cdn.test/me.png', user.id]);
   assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por3' })).status, 200);
-  assert.equal(await balance('por3'), 1);
+  assert.equal(await trial('por3'), 0);
 });
 
 test('portre: gövde yoksa profilde yüklenen avatar, giriş fotoğrafından önce kullanılır', async () => {
@@ -245,16 +249,16 @@ test('portre: gövde yoksa profilde yüklenen avatar, giriş fotoğrafından ön
   assert.ok(!seen.some((x) => x.url === 'https://cdn.test/yok.png'));
 });
 
-test('portre: kredi yetmezse 403; OpenAI hatasında kredi iade edilir + 502', async () => {
+test('portre: deneme bittiyse 403 PREMIUM_REQUIRED; OpenAI hatasında deneme geri gelir + 502', async () => {
   state.openai = 'ok';
-  for (let i = 0; i < 3; i += 1) assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por4', body: { photo } })).status, 200);
+  assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por4', body: { photo } })).status, 200);
   const out = await t.request('POST', '/ai/portrait', { token: 'test:por4', body: { photo } });
   assert.equal(out.status, 403);
-  assert.equal(out.body.code, 'INSUFFICIENT_CREDITS');
+  assert.equal(out.body.code, 'PREMIUM_REQUIRED');
 
   state.openai = 'fail';
   assert.equal((await t.request('POST', '/ai/portrait', { token: 'test:por5', body: { photo } })).body.code, 'AI_FAILED');
-  assert.equal(await balance('por5'), 3);
+  assert.equal(await trial('por5'), 1);
   state.openai = 'ok';
 });
 

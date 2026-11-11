@@ -19,7 +19,7 @@ module.exports = defineModule('cv_builder', '', [
   {
     method: 'post',
     path: '/cv-builder/photo',
-    summary: "CV fotoğrafını yükler, CV'ye yazılacak herkese açık adresi döner (kredi yok)",
+    summary: "CV fotoğrafını yükler, CV'ye yazılacak herkese açık adresi döner",
     auth: 'required',
     rateLimit: { windowMs: 3600_000, max: 60 }, // OWASP API6
     request: { body: CvPhotoBody },

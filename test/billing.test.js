@@ -11,18 +11,18 @@ let userId;
 const auth = { authorization: 'Bearer rc-test-secret' };
 
 before(async () => {
-  products.CONSUMABLES.credits_10 = {
+  products.CONSUMABLES.coins_10 = {
     description: 'test',
     async grant(uid, conn) {
       await conn.query("INSERT INTO job_runs (name, last_error) VALUES (?, 'granted')", [`grant-${uid}-${Date.now()}`]);
-      return { credits: 10 };
+      return { coins: 10 };
     },
   };
   t = await setup();
   userId = (await t.request('GET', '/account', { token: 'test:buyer' })).body.data.user.id;
 });
 after(async () => {
-  delete products.CONSUMABLES.credits_10;
+  delete products.CONSUMABLES.coins_10;
   await t.close();
 });
 
@@ -49,13 +49,13 @@ test('webhook: abonelik başlar → premium; aynı olay ikinci kez işlenmez; s�
 });
 
 test('tüketilebilir ürün işlem başına bir kez verilir', async () => {
-  const e1 = event({ type: 'NON_RENEWING_PURCHASE', product_id: 'credits_10', transaction_id: 'tx-1' });
-  const e2 = event({ type: 'NON_RENEWING_PURCHASE', product_id: 'credits_10', transaction_id: 'tx-1' }); // farklı olay, aynı işlem
+  const e1 = event({ type: 'NON_RENEWING_PURCHASE', product_id: 'coins_10', transaction_id: 'tx-1' });
+  const e2 = event({ type: 'NON_RENEWING_PURCHASE', product_id: 'coins_10', transaction_id: 'tx-1' }); // farklı olay, aynı işlem
   await t.request('POST', '/billing/revenuecat/webhook', { body: e1, headers: auth });
   await t.request('POST', '/billing/revenuecat/webhook', { body: e2, headers: auth });
   const rows = await t.deps.db.query('SELECT * FROM purchases WHERE user_id = ?', [userId]);
   assert.equal(rows.length, 1);
-  assert.deepEqual(rows[0].granted, { credits: 10 });
+  assert.deepEqual(rows[0].granted, { coins: 10 });
 });
 
 test('/billing/sync durumu RevenueCat\'ten okur (istemciye güvenmez)', async () => {
@@ -64,7 +64,7 @@ test('/billing/sync durumu RevenueCat\'ten okur (istemciye güvenmez)', async ()
     assert.equal(id, userId);
     return {
       entitlements: { premium: { expires_date: new Date(Date.now() + 3600_000).toISOString(), product_identifier: 'pro_yearly', store: 'play_store' } },
-      non_subscriptions: { credits_10: [{ id: 'rc-1', store_transaction_id: 'tx-2', store: 'play_store', purchase_date: new Date().toISOString() }] },
+      non_subscriptions: { coins_10: [{ id: 'rc-1', store_transaction_id: 'tx-2', store: 'play_store', purchase_date: new Date().toISOString() }] },
     };
   };
   try {

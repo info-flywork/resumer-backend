@@ -20,7 +20,7 @@ module.exports = defineModule('analyses', '/analyses', [
   {
     method: 'post',
     path: '',
-    summary: 'CV ya da LinkedIn analizi (1 kredi)',
+    summary: 'CV ya da LinkedIn analizi (Pro ya da ücretsiz deneme)',
     auth: 'required',
     rateLimit: { windowMs: 3_600_000, max: 20 },
     request: { body: AnalyzeBody },

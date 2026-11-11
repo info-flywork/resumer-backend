@@ -9,7 +9,7 @@ module.exports = defineModule('tailor', '/tailor', [
   {
     method: 'post',
     path: '/analyze',
-    summary: "CV'yi iş ilanına göre analiz eder, 3 öneri üretir (1 kredi)",
+    summary: "CV'yi iş ilanına göre analiz eder, 3 öneri üretir (Pro ya da ücretsiz deneme)",
     auth: 'required',
     rateLimit: { windowMs: 3600_000, max: 20 },
     request: { body: AnalyzeBody },
@@ -20,7 +20,7 @@ module.exports = defineModule('tailor', '/tailor', [
   {
     method: 'post',
     path: '/apply',
-    summary: 'Seçilen önerileri uygular, önizleme döner (kredi yok)',
+    summary: 'Seçilen önerileri uygular, önizleme döner',
     auth: 'required',
     rateLimit: { windowMs: 60_000, max: 30 }, // OWASP API6
     request: { body: ApplyBody },

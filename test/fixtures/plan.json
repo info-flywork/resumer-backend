@@ -1,5 +1,5 @@
 {
   "status": "success",
   "message": "ok",
-  "data": {"name": "Resumer Pro", "credits": 12, "renews_on": "Dec 12, 2025"}
+  "data": {"name": "Resumer Pro", "renews_on": "Dec 12, 2025", "is_active": true, "free_trial_available": false}
 }

@@ -15,7 +15,6 @@ const Profile = z.object({
   description: z.string(),
   avatar_url: z.string().nullable(),
   is_pro: z.boolean(),
-  credits: z.number().int(),
   stats: Stats,
 });
 
@@ -24,7 +23,7 @@ const CvStats = z.object({ total: z.number().int(), tailored: z.number().int(), 
 /** Düzenlenebilir metin alanı: string ya da null (boş = temizle) @param {number} max */
 const text = (max) => z.string().max(max).nullable().optional();
 
-// Uygulama tüm UserProfile.toJson() alanlarını gönderir; email / is_pro / credits / stats kabul edilir, yok sayılır.
+// Uygulama tüm UserProfile.toJson() alanlarını gönderir; email / is_pro / stats kabul edilir, yok sayılır.
 const UpdateBody = z
   .object({
     name: text(100),
@@ -40,7 +39,6 @@ const UpdateBody = z
       .optional(),
     email: z.string().max(320).nullable().optional(),
     is_pro: z.boolean().nullable().optional(),
-    credits: z.number().nullable().optional(),
     stats: z
       .object({ cvs: z.number().int().nullable().optional(), analyses: z.number().int().nullable().optional(), tailored: z.number().int().nullable().optional() })
       .strict()

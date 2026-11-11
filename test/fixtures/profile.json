@@ -10,7 +10,6 @@
     "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley",
     "avatar_url": null,
     "is_pro": true,
-    "credits": 12,
     "stats": {"cvs": 6, "analyses": 3, "tailored": 12}
   }
 }
