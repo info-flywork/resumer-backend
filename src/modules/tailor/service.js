@@ -88,7 +88,9 @@ function createService(deps) {
     async analyze(user, body) {
       const cv = await deps.cvs.getOwned(user, body.cv_id, { statuses: ['saved'] });
       deps.ai.assertEnabled();
-      const jobText = await deps.ai.fetchPageText(body.job_url); // okunamazsa 422 URL_UNREADABLE, deneme hakkı harcanmaz
+      let jobUrl = String(body.job_url || '').trim();
+      if (jobUrl && !/^https?:\/\//i.test(jobUrl)) jobUrl = `https://${jobUrl}`;
+      const jobText = await deps.ai.fetchPageText(jobUrl); // okunamazsa 422 URL_UNREADABLE, deneme hakkı harcanmaz
       const cvText = deps.cvs.contentToText({ ...cv.content, subtitle: cv.subtitle });
 
       const id = repo.newId();
@@ -210,7 +212,7 @@ function createService(deps) {
           _fallback_email: profile?.email || user.email,
           _fallback_phone: profile?.phone || user.phone,
           _fallback_location: profile?.location,
-        }, user.locale),
+        }, cv.language || user.locale),
       };
     },
 

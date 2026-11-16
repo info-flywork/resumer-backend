@@ -48,6 +48,81 @@ function applySection(section, content, fixed) {
   return { content: next, text: fixed.summary };
 }
 
+/** Karşılaştırma için bölümün metin parmak izi @param {string} section @param {any} content */
+function sectionFingerprint(section, content) {
+  if (section === 'experience') {
+    return JSON.stringify(
+      (Array.isArray(content.experiences) ? content.experiences : []).map((/** @type {any} */ e) => ({
+        company: e?.company ?? null,
+        position: e?.position ?? null,
+        location: e?.location ?? null,
+        description: e?.description ?? null,
+      })),
+    );
+  }
+  if (section === 'education') {
+    return JSON.stringify(
+      (Array.isArray(content.educations) ? content.educations : []).map((/** @type {any} */ e) => ({
+        school: e?.school ?? null,
+        degree: e?.degree ?? null,
+        field_of_study: e?.field_of_study ?? null,
+        period: e?.period ?? null,
+        description: e?.description ?? null,
+      })),
+    );
+  }
+  if (section === 'skills') return JSON.stringify(Array.isArray(content.skills) ? content.skills : []);
+  return String(content.summary ?? '');
+}
+
+/**
+ * Analizdeki yapıştırılmaya hazır metni mümkünse doğrudan bölüme uygular (ikinci AI turuna gerek kalmaz).
+ * @param {string} section @param {any} content @param {string | null | undefined} suggested
+ * @returns {any | null}
+ */
+function fixedFromSuggested(section, content, suggested) {
+  const text = typeof suggested === 'string' ? suggested.trim() : '';
+  if (!text) return null;
+  if (section === 'summary') return { summary: text.slice(0, 2000) };
+  if (section === 'skills') {
+    const extra = text.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean).slice(0, 60);
+    if (!extra.length) return null;
+    const current = Array.isArray(content.skills) ? content.skills : [];
+    const merged = [...current];
+    for (const s of extra) {
+      if (!merged.some((x) => String(x).toLowerCase() === s.toLowerCase())) merged.push(s);
+    }
+    return { skills: merged.slice(0, 60) };
+  }
+  // Deneyim / eğitim: suggested_text ilk öğenin description alanına yazılır.
+  if (section === 'experience') {
+    const old = Array.isArray(content.experiences) ? content.experiences : [];
+    if (!old.length) return null;
+    return {
+      experiences: old.map((/** @type {any} */ e, /** @type {number} */ i) => ({
+        company: textOrNull(e?.company),
+        position: textOrNull(e?.position),
+        location: textOrNull(e?.location),
+        description: i === 0 ? text.slice(0, 4000) : textOrNull(e?.description),
+      })),
+    };
+  }
+  if (section === 'education') {
+    const old = Array.isArray(content.educations) ? content.educations : [];
+    if (!old.length) return null;
+    return {
+      educations: old.map((/** @type {any} */ e, /** @type {number} */ i) => ({
+        school: textOrNull(e?.school),
+        degree: textOrNull(e?.degree),
+        field_of_study: textOrNull(e?.field_of_study),
+        period: textOrNull(e?.period),
+        description: i === 0 ? text.slice(0, 4000) : textOrNull(e?.description),
+      })),
+    };
+  }
+  return null;
+}
+
 /**
  * CV içeriğinin yalnızca ilgili bölümü (yapay zekâya gönderilir).
  * @param {string} section @param {any} c
@@ -253,26 +328,37 @@ function createService(deps) {
       const content = cv.content && typeof cv.content === 'object' ? cv.content : {};
       /** @type {'summary' | 'experience' | 'education' | 'skills'} */
       const section = rec.target_section === 'other' ? 'summary' : rec.target_section;
-      const out = await deps.ai.json({
-        system:
-          'You improve one section of a resume according to a recommendation. Keep facts truthful; do not invent employers, dates or degrees. ' +
-          `Write in ${languageName(user.locale)}. Return the same structure with the same number of items, JSON only.`,
-        user: JSON.stringify({
-          recommendation: { title: rec.title, description: rec.description, suggested_text: rec.suggested_text },
-          section: pickSection(section, content),
-        }),
-        schema: FIX_JSON[section],
-        schemaName: 'resume_section_fix',
-        maxTokens: 2000,
-      });
-      const parsed = FIX_SECTION[section].safeParse(out);
-      if (!parsed.success) throw aiFailed();
-      const fixed = /** @type {any} */ (parsed.data);
+
+      // Analiz zaten yapıştırılmaya hazır metin üretmişse (özet/yetenek) doğrudan uygula;
+      // ikinci AI turu sıkça aynı metni geri döndürüp "hiç değişmedi" hissi yaratıyordu.
+      let fixed = /** @type {any} */ (fixedFromSuggested(section, content, rec.suggested_text));
+      if (!fixed) {
+        const out = await deps.ai.json({
+          system:
+            'You improve one section of a resume according to a recommendation. You MUST make a visible improvement — do not return the section unchanged. ' +
+            'If suggested_text is provided, treat it as the primary rewrite for the relevant field(s) and integrate it. ' +
+            'Keep facts truthful; do not invent employers, dates or degrees. ' +
+            `Write in ${languageName(user.locale)}. Return the same structure with the same number of items, JSON only.`,
+          user: JSON.stringify({
+            recommendation: { title: rec.title, description: rec.description, suggested_text: rec.suggested_text },
+            section: pickSection(section, content),
+          }),
+          schema: FIX_JSON[section],
+          schemaName: 'resume_section_fix',
+          maxTokens: 2000,
+        });
+        const parsed = FIX_SECTION[section].safeParse(out);
+        if (!parsed.success) throw aiFailed();
+        fixed = /** @type {any} */ (parsed.data);
+      }
       const oldItems = section === 'experience' ? content.experiences : section === 'education' ? content.educations : null;
       const newItems = section === 'experience' ? fixed.experiences : section === 'education' ? fixed.educations : null;
       if ((Array.isArray(oldItems) ? oldItems.length : 0) !== (newItems ? newItems.length : 0)) throw aiFailed();
 
       const { content: next, text } = applySection(section, content, fixed);
+      if (sectionFingerprint(section, content) === sectionFingerprint(section, next)) {
+        throw new AppError(422, 'NO_VISIBLE_CHANGE', 'Öneri CV içeriğinde görünür bir değişiklik üretmedi');
+      }
       await deps.db.tx(async (conn) => {
         if (!(await repo.markApplied(user.id, rec.id, conn))) throw conflict('Bu öneri zaten uygulandı', 'ALREADY_APPLIED');
         await deps.cvs.updateContent(user, rec.cv_id, next, {}, conn);

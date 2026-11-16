@@ -122,6 +122,8 @@ function createService(deps) {
         language = detectLanguage(contentToText(row.content));
         if (language) await repo.setLanguageIfEmpty(user.id, row.id, language).catch(() => {});
       }
+      // Bölüm başlıkları CV diline göre (çeviri sonrası app locale TR kalsa bile EN başlık).
+      const previewLocale = language || user.locale;
       return {
         ...toSummary(row, user.locale),
         language,
@@ -132,7 +134,7 @@ function createService(deps) {
           _fallback_name: user.display_name,
           _fallback_email: user.email,
           _fallback_phone: user.phone,
-        }, user.locale),
+        }, previewLocale),
         source_file: src?.key
           ? { name: String(src.name || 'cv.pdf'), mime: String(src.mime || 'application/pdf') }
           : null,

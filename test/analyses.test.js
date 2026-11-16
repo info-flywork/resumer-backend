@@ -214,11 +214,14 @@ test('anahtar yoksa 503 AI_NOT_CONFIGURED', async () => {
   }
 });
 
-/** Analiz yap, ilk önerinin id'sini döndür */
-async function analyzed(cv, token, target) {
+/** Analiz yap, ilk önerinin id'sini döndür. suggested_text null → AI yolu test edilir. */
+async function analyzed(cv, token, target, suggested = null) {
   const r = await t.request('POST', '/analyses', { token, body: { cv_id: cv.id } });
   const rec = r.body.data.recommendations[0];
-  await t.deps.db.run('UPDATE analysis_recommendations SET target_section = ? WHERE id = ?', [target, rec.id]);
+  await t.deps.db.run(
+    'UPDATE analysis_recommendations SET target_section = ?, suggested_text = ? WHERE id = ?',
+    [target, suggested, rec.id],
+  );
   return rec.id;
 }
 
@@ -239,6 +242,39 @@ test('fix: özet bölümü güncellenir, deneme harcanmaz, ikinci kez 409 ALREAD
   const again = await t.request('POST', '/analyses/fix', { token, body: { recommendation_id: recId } });
   assert.equal(again.status, 409);
   assert.equal(again.body.code, 'ALREADY_APPLIED');
+});
+
+test('fix: özet için suggested_text doğrudan uygulanır (AI çağrılmaz)', async () => {
+  const { token, cv } = await userWithCv();
+  const recId = await analyzed(cv, token, 'summary', 'Hazır yeni özet metni');
+  const beforeCalls = state.jsonCalls.length;
+  const r = await t.request('POST', '/analyses/fix', { token, body: { recommendation_id: recId } });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.data.suggested_text, 'Hazır yeni özet metni');
+  assert.equal(state.jsonCalls.filter((c) => c.schemaName === 'resume_section_fix').length, 0);
+  assert.ok(state.jsonCalls.length >= beforeCalls); // analiz çağrıları olabilir
+  const row = await t.deps.db.one('SELECT content FROM cvs WHERE id = ?', [cv.id]);
+  assert.equal(row.content.summary, 'Hazır yeni özet metni');
+});
+
+test('fix: yetenek suggested_text mevcut listeye eklenir', async () => {
+  const { token, cv } = await userWithCv();
+  const recId = await analyzed(cv, token, 'skills', 'TypeScript, Docker');
+  const r = await t.request('POST', '/analyses/fix', { token, body: { recommendation_id: recId } });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const row = await t.deps.db.one('SELECT content FROM cvs WHERE id = ?', [cv.id]);
+  assert.deepEqual(row.content.skills, ['Python', 'TypeScript', 'Docker']);
+});
+
+test('fix: AI aynı içeriği dönerse 422 NO_VISIBLE_CHANGE ve applied olmaz', async () => {
+  const { token, cv } = await userWithCv();
+  const recId = await analyzed(cv, token, 'summary');
+  state.fix = { summary: 'Eski özet' };
+  const r = await t.request('POST', '/analyses/fix', { token, body: { recommendation_id: recId } });
+  assert.equal(r.status, 422);
+  assert.equal(r.body.code, 'NO_VISIBLE_CHANGE');
+  const row = await t.deps.db.one('SELECT applied_at FROM analysis_recommendations WHERE id = ?', [recId]);
+  assert.equal(row.applied_at, null);
 });
 
 test('fix: deneyim bölümünde tarihler korunur, öğe sayısı değişirse 502', async () => {
